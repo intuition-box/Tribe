@@ -5,35 +5,34 @@ import Header from "@/components/header"
 import CreateTokenModal from "@/components/create-token-modal"
 import TokenGrid from "@/components/token-grid"
 import BondingCurveView from "@/components/bonding-curve-view"
-import type { mockTokens } from "@/lib/mock-data"
+import { fetchAllTokens } from "@/lib/tokens"
+import type { MemeToken } from "@/lib/tokens"
 
 export default function Home() {
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [selectedToken, setSelectedToken] = useState<(typeof mockTokens)[0] | null>(null)
-  const [tokens, setTokens] = useState([])
+  const [selectedToken, setSelectedToken] = useState<MemeToken | null>(null)
+  const [tokens, setTokens] = useState<MemeToken[]>([])
   const [showAlphaRoom, setShowAlphaRoom] = useState(false)
-  const [isLoaded, setIsLoaded] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const savedTokens = localStorage.getItem("memeTokens")
-    if (savedTokens) {
+    const loadTokens = async () => {
+      setIsLoading(true)
       try {
-        setTokens(JSON.parse(savedTokens))
+        const fetchedTokens = await fetchAllTokens()
+        setTokens(fetchedTokens)
       } catch (error) {
-        console.error("Failed to parse saved tokens:", error)
+        console.error("[v0] Failed to load tokens:", error)
         setTokens([])
+      } finally {
+        setIsLoading(false)
       }
     }
-    setIsLoaded(true)
+
+    loadTokens()
   }, [])
 
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem("memeTokens", JSON.stringify(tokens))
-    }
-  }, [tokens, isLoaded])
-
-  const handleCreateToken = (newToken: (typeof mockTokens)[0]) => {
+  const handleCreateToken = (newToken: MemeToken) => {
     setTokens([newToken, ...tokens])
     setShowCreateModal(false)
   }
@@ -70,7 +69,13 @@ export default function Home() {
         <BondingCurveView token={selectedToken} onBack={() => setSelectedToken(null)} />
       ) : (
         <div className="container mx-auto px-4 py-8">
-          <TokenGrid tokens={tokens} onSelectToken={setSelectedToken} />
+          {isLoading ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Loading tokens...</p>
+            </div>
+          ) : (
+            <TokenGrid tokens={tokens} onSelectToken={setSelectedToken} />
+          )}
         </div>
       )}
 

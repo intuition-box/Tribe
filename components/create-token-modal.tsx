@@ -10,12 +10,13 @@ import { X, Upload, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { useContract } from "@/hooks/use-contract"
 import { useWallet } from "@/hooks/use-wallet"
-import { mockTokens } from "@/lib/mock-data"
+import { checkLinkExists, createTokenInDatabase } from "@/lib/tokens"
+import type { MemeToken } from "@/lib/tokens"
 
 interface CreateTokenModalProps {
   onClose: () => void
-  onCreate: (tokenAddress: string) => void
-  existingTokens?: (typeof mockTokens)[0][]
+  onCreate: (token: MemeToken) => void
+  existingTokens?: MemeToken[]
 }
 
 export default function CreateTokenModal({ onClose, onCreate, existingTokens = [] }: CreateTokenModalProps) {
@@ -52,28 +53,19 @@ export default function CreateTokenModal({ onClose, onCreate, existingTokens = [
     }
   }
 
-  const isDuplicateLink = (link: string): boolean => {
-    if (!link || link.trim() === "") return false
+  const validateIntuitionLink = (): string | null => {
+    const link = formData.intuitionLink.trim()
 
-    const normalizeLink = (url: string): string => {
-      return url
-        .toLowerCase()
-        .trim()
-        .replace(/^(https?:\/\/|https?:|https|http|www\.)*\/*/g, "")
-        .replace(/^www\./, "")
-        .replace(/\/$/, "")
-        .trim()
+    if (link === "") {
+      return null // Link is optional
     }
 
-    const normalizedInput = normalizeLink(link)
+    // Enforce https:// prefix
+    if (!link.startsWith("https://")) {
+      return 'Link must start with "https://" prefix'
+    }
 
-    if (!normalizedInput) return false
-
-    const isInMockTokens = mockTokens.some((token) => normalizeLink(token.intuitionLink) === normalizedInput)
-
-    const isInExistingTokens = existingTokens.some((token) => normalizeLink(token.intuitionLink) === normalizedInput)
-
-    return isInMockTokens || isInExistingTokens
+    return null
   }
 
   const handleCreate = async () => {
@@ -87,9 +79,18 @@ export default function CreateTokenModal({ onClose, onCreate, existingTokens = [
       return
     }
 
-    if (formData.intuitionLink && isDuplicateLink(formData.intuitionLink)) {
-      setError("This Intuition Graph link is already in use. Please use a unique link.")
+    const linkValidationError = validateIntuitionLink()
+    if (linkValidationError) {
+      setError(linkValidationError)
       return
+    }
+
+    if (formData.intuitionLink) {
+      const linkExists = await checkLinkExists(formData.intuitionLink.trim())
+      if (linkExists) {
+        setError("This Intuition Graph link is already in use. Please use a unique link.")
+        return
+      }
     }
 
     setIsLoading(true)
@@ -105,24 +106,31 @@ export default function CreateTokenModal({ onClose, onCreate, existingTokens = [
       })
 
       const tokenAddress = await createToken(formData.name, formData.symbol, metadata)
-      const newToken = {
-        id: tokenAddress,
+
+      const newToken: Omit<MemeToken, "id"> = {
         name: formData.name,
         symbol: formData.symbol,
-        image: imageUrl, // use the data URL directly
+        image: imageUrl,
         currentPrice: 0.0001533,
         startPrice: 0.0001533,
         marketCap: 0,
         maxSupply: 1000000000,
-        currentSupply: 0, // start with 0 supply, increases as tokens are bought
+        currentSupply: 0,
         holders: 1,
         creator: address,
-        intuitionLink: formData.intuitionLink,
+        intuitionLink: formData.intuitionLink.trim(),
         isAlpha: true,
         contractAddress: tokenAddress,
       }
-      onCreate(newToken)
-      onClose()
+
+      const savedToken = await createTokenInDatabase(newToken)
+
+      if (savedToken) {
+        onCreate(savedToken)
+        onClose()
+      } else {
+        setError("Failed to save token. Please try again.")
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create token")
       console.error("[v0] Token creation error:", err)
@@ -248,8 +256,8 @@ export default function CreateTokenModal({ onClose, onCreate, existingTokens = [
                   className="bg-input border-border text-foreground"
                 />
                 <p className="text-xs text-muted-foreground mt-2">
-                  If provided, this link will be displayed on your token's bonding curve page and token card. Each token
-                  must have a unique link.
+                  If provided, link must start with "https://". This link will be displayed on your token's bonding
+                  curve page. Each token must have a unique link.
                 </p>
               </div>
 
@@ -289,7 +297,9 @@ export default function CreateTokenModal({ onClose, onCreate, existingTokens = [
               <Button
                 onClick={handleCreate}
                 className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground disabled:opacity-50"
-                disabled={isLoading || (formData.intuitionLink !== "" && isDuplicateLink(formData.intuitionLink))}
+                disabled={
+                  isLoading || (formData.intuitionLink !== "" && !formData.intuitionLink.startsWith("https://"))
+                }
               >
                 {isLoading ? (
                   <>
