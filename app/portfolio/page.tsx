@@ -4,10 +4,11 @@ import { useState, useEffect } from "react"
 import { useWallet } from "@/hooks/use-wallet"
 import { fetchAllTokens, type MemeToken } from "@/lib/tokens"
 import { getUserTokenBalance } from "@/lib/user-holdings"
+import { getUserPoints, updateUserPoints } from "@/lib/points-system"
 import Header from "@/components/header"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, TrendingUp, Coins } from "lucide-react"
+import { ArrowLeft, TrendingUp, Coins, Award, RefreshCw, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface TokenHolding extends MemeToken {
@@ -23,6 +24,11 @@ export default function PortfolioPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [totalValue, setTotalValue] = useState(0)
 
+  const [userPoints, setUserPoints] = useState<number>(0)
+  const [totalVolume, setTotalVolume] = useState<number>(0)
+  const [isRefreshingPoints, setIsRefreshingPoints] = useState(false)
+  const [pointsTableMissing, setPointsTableMissing] = useState(false)
+
   useEffect(() => {
     const loadPortfolio = async () => {
       if (!address) {
@@ -34,11 +40,9 @@ export default function PortfolioPage() {
       try {
         const allTokens = await fetchAllTokens()
 
-        // Get tokens created by user
         const created = allTokens.filter((token) => token.creator.toLowerCase() === address.toLowerCase())
         setCreatedTokens(created)
 
-        // Get user's token holdings
         const holdingsPromises = allTokens.map(async (token) => {
           if (!token.contractAddress) return null
 
@@ -55,9 +59,17 @@ export default function PortfolioPage() {
         const resolvedHoldings = (await Promise.all(holdingsPromises)).filter((h): h is TokenHolding => h !== null)
         setHoldings(resolvedHoldings)
 
-        // Calculate total portfolio value
         const total = resolvedHoldings.reduce((sum, holding) => sum + holding.value, 0)
         setTotalValue(total)
+
+        const points = await getUserPoints(address)
+        if (points) {
+          setUserPoints(points.points)
+          setTotalVolume(points.totalVolume)
+          setPointsTableMissing(false)
+        } else {
+          setPointsTableMissing(true)
+        }
       } catch (error) {
         console.error("[v0] Error loading portfolio:", error)
       } finally {
@@ -67,6 +79,23 @@ export default function PortfolioPage() {
 
     loadPortfolio()
   }, [address])
+
+  const handleRefreshPoints = async () => {
+    if (!address) return
+
+    setIsRefreshingPoints(true)
+    try {
+      const result = await updateUserPoints(address)
+      if (result) {
+        setUserPoints(result.points)
+        setTotalVolume(result.totalVolume)
+      }
+    } catch (error) {
+      console.error("[v0] Error refreshing points:", error)
+    } finally {
+      setIsRefreshingPoints(false)
+    }
+  }
 
   if (!address) {
     return (
@@ -91,16 +120,47 @@ export default function PortfolioPage() {
         </Button>
 
         <div className="space-y-8">
-          {/* Portfolio Summary */}
-          <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20 p-8">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Total Portfolio Value</p>
-              <h2 className="text-4xl font-bold text-foreground">${totalValue.toFixed(2)}</h2>
-              <p className="text-sm text-accent">Based on current market prices</p>
-            </div>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20 p-8">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Total Portfolio Value</p>
+                <h2 className="text-4xl font-bold text-foreground">{totalValue.toFixed(2)} TRUST</h2>
+                <p className="text-sm text-accent">Based on current market prices</p>
+              </div>
+            </Card>
 
-          {/* Token Holdings */}
+            <Card className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-500/20 p-8">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Award className="w-5 h-5 text-amber-500" />
+                    <p className="text-sm text-muted-foreground">Trading Points</p>
+                  </div>
+                  <Button
+                    onClick={handleRefreshPoints}
+                    disabled={isRefreshingPoints}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRefreshingPoints ? "animate-spin" : ""}`} />
+                  </Button>
+                </div>
+                <h2 className="text-4xl font-bold text-foreground">{userPoints.toFixed(2)}</h2>
+                <p className="text-sm text-amber-500">{totalVolume.toFixed(2)} TRUST Total Volume</p>
+                {pointsTableMissing && (
+                  <div className="mt-3 flex items-start gap-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded">
+                    <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-500">
+                      Points are calculated from blockchain but not persisted. Run the migration script to enable full
+                      points tracking.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Coins className="w-5 h-5 text-primary" />
@@ -136,7 +196,7 @@ export default function PortfolioPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Value</span>
-                        <span className="font-semibold text-accent">${holding.value.toFixed(2)}</span>
+                        <span className="font-semibold text-accent">{holding.value.toFixed(2)} TRUST</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Price</span>
@@ -160,7 +220,6 @@ export default function PortfolioPage() {
             )}
           </div>
 
-          {/* Created Tokens */}
           <div>
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="w-5 h-5 text-accent" />
