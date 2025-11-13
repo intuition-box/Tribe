@@ -78,6 +78,11 @@ export default function TradePanel({ token, onTradeComplete }: TradePanelProps) 
       return
     }
 
+    if (!trustAmount || Number.parseFloat(trustAmount) <= 0) {
+      setError("Invalid TRUST amount calculated. Please check your input.")
+      return
+    }
+
     if (!token.contractAddress || token.contractAddress === "") {
       setError("Invalid token contract address")
       return
@@ -88,7 +93,13 @@ export default function TradePanel({ token, onTradeComplete }: TradePanelProps) 
 
     try {
       if (mode === "buy") {
-        const minTokensOut = (Number.parseFloat(amount) * 0.99).toFixed(6) // 1% slippage
+        const minTokensOut = (Number.parseFloat(amount) * 0.99).toFixed(6)
+        console.log("[v0] Buying tokens:", {
+          contractAddress: token.contractAddress,
+          trustAmount,
+          amount,
+          minTokensOut,
+        })
         await buyTokens(token.contractAddress, trustAmount, minTokensOut)
       } else {
         await sellTokens(token.contractAddress, amount)

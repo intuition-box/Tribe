@@ -68,12 +68,23 @@ export default function QuickTradeModal({
       return
     }
 
+    if (!trustAmount || Number.parseFloat(trustAmount) <= 0) {
+      setError("Invalid TRUST amount. Please check your input.")
+      return
+    }
+
     setIsLoading(true)
     setError("")
 
     try {
       if (mode === "buy") {
-        const minTokensOut = (Number.parseFloat(amount) * 0.99).toString()
+        const minTokensOut = (Number.parseFloat(amount) * 0.99).toFixed(6)
+        console.log("[v0] Quick trade - Buying tokens:", {
+          contractAddress: token.contractAddress,
+          trustAmount,
+          amount,
+          minTokensOut,
+        })
         await buyTokens(token.contractAddress, trustAmount, minTokensOut)
       } else {
         await sellTokens(token.contractAddress, amount)

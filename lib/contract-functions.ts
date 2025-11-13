@@ -52,15 +52,67 @@ export async function buyTokens(tokenAddress: string, trustAmount: string, minTo
       throw new Error("Invalid token address provided to buyTokens")
     }
 
-    // Check if address looks like a UUID (invalid format)
     if (!tokenAddress.startsWith("0x")) {
       throw new Error(`Invalid token address format. Expected 0x-prefixed address, got: ${tokenAddress}`)
     }
 
-    const contract = await getContract()
-    console.log("[v0] buyTokens - Calling contract with:", { tokenAddress, trustAmount, minTokensOut })
+    // Validate amounts
+    const trustAmountNum = Number.parseFloat(trustAmount)
+    if (isNaN(trustAmountNum) || trustAmountNum <= 0) {
+      throw new Error(`Invalid TRUST amount: ${trustAmount}`)
+    }
 
-    const minTokensOutWei = minTokensOut && minTokensOut !== "0" ? parseEther(minTokensOut) : toBigInt(0)
+    const contract = await getContract()
+    console.log("[v0] buyTokens - Validating token exists...")
+
+    // Check if token exists by calling getTokenInfo first
+    const tokenInfo = await contract.getTokenInfo(tokenAddress)
+    if (!tokenInfo || !tokenInfo.creator || tokenInfo.creator === "0x0000000000000000000000000000000000000000") {
+      throw new Error("Token does not exist or has not been created yet")
+    }
+
+    if (tokenInfo.completed) {
+      throw new Error("Token launch has been completed. Trading is disabled.")
+    }
+
+    console.log("[v0] buyTokens - Token validated, preparing transaction...")
+    console.log("[v0] buyTokens - Parameters:", {
+      tokenAddress,
+      trustAmount: `${trustAmount} TRUST`,
+      trustAmountWei: parseEther(trustAmount).toString(),
+      minTokensOut,
+    })
+
+    // Parse minTokensOut more carefully - if it's "0" or empty, use 0
+    let minTokensOutWei
+    if (!minTokensOut || minTokensOut === "0" || Number.parseFloat(minTokensOut) === 0) {
+      minTokensOutWei = toBigInt(0)
+      console.log("[v0] buyTokens - No minimum tokens requirement (slippage protection disabled)")
+    } else {
+      minTokensOutWei = parseEther(minTokensOut)
+      console.log("[v0] buyTokens - Minimum tokens out:", minTokensOut, "tokens")
+    }
+
+    // Estimate gas first to catch errors before sending transaction
+    try {
+      console.log("[v0] buyTokens - Estimating gas...")
+      const gasEstimate = await contract.buyTokens.estimateGas(tokenAddress, minTokensOutWei, {
+        value: parseEther(trustAmount),
+      })
+      console.log("[v0] buyTokens - Gas estimate:", gasEstimate.toString())
+    } catch (gasError: any) {
+      console.error("[v0] buyTokens - Gas estimation failed:", gasError)
+
+      // Provide more helpful error messages based on common failures
+      if (gasError.message?.includes("insufficient funds")) {
+        throw new Error("Insufficient TRUST balance to complete this purchase")
+      } else if (gasError.message?.includes("execution reverted")) {
+        throw new Error(
+          "Transaction would fail. Possible reasons: insufficient TRUST, invalid slippage settings, or token launch completed",
+        )
+      }
+      throw new Error(`Transaction validation failed: ${gasError.message || "Unknown error"}`)
+    }
 
     const tx = await contract.buyTokens(tokenAddress, minTokensOutWei, {
       value: parseEther(trustAmount),
@@ -70,8 +122,18 @@ export async function buyTokens(tokenAddress: string, trustAmount: string, minTo
     const receipt = await tx.wait()
     console.log("[v0] buyTokens - Transaction confirmed:", receipt?.transactionHash)
     return receipt
-  } catch (error) {
-    console.error("Failed to buy tokens:", error)
+  } catch (error: any) {
+    console.error("[v0] Failed to buy tokens:", error)
+
+    // Improve error messages for common issues
+    if (error.message?.includes("user rejected")) {
+      throw new Error("Transaction rejected by user")
+    } else if (error.message?.includes("insufficient funds")) {
+      throw new Error("Insufficient TRUST balance in your wallet")
+    } else if (error.message?.includes("execution reverted")) {
+      throw new Error("Transaction failed. Please check: token exists, launch not completed, and you have enough TRUST")
+    }
+
     throw error
   }
 }
