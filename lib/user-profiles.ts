@@ -12,27 +12,40 @@ export interface UserProfile {
 export async function getUserProfile(walletAddress: string): Promise<UserProfile | null> {
   if (!walletAddress) return null
 
-  const supabase = createBrowserClient()
-  const { data, error } = await supabase
-    .from("user_profiles")
-    .select("*")
-    .eq("wallet_address", walletAddress.toLowerCase())
-    .single()
-
-  if (error) {
-    if (error.code === "PGRST116") {
-      // Profile doesn't exist yet
+  try {
+    const supabase = createBrowserClient()
+    if (!supabase) {
+      console.error("[v0] Supabase client not initialized")
       return null
     }
-    console.error("[v0] Error fetching user profile:", error)
-    throw error
-  }
+    
+    const { data, error } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("wallet_address", walletAddress.toLowerCase())
+      .single()
 
-  return data
+    if (error) {
+      if (error.code === "PGRST116") {
+        // Profile doesn't exist yet
+        return null
+      }
+      console.error("[v0] Error fetching user profile:", error)
+      return null
+    }
+
+    return data
+  } catch (error) {
+    console.error("[v0] Error fetching user profile:", error)
+    return null
+  }
 }
 
 export async function createOrUpdateUserProfile(profile: UserProfile): Promise<UserProfile> {
   const supabase = createBrowserClient()
+  if (!supabase) {
+    throw new Error("Supabase client not initialized")
+  }
 
   const profileData = {
     wallet_address: profile.wallet_address.toLowerCase(),

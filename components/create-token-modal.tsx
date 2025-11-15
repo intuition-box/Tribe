@@ -6,7 +6,7 @@ import { useState, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { X, Upload, Loader2 } from "lucide-react"
+import { X, Upload, Loader2 } from 'lucide-react'
 import Image from "next/image"
 import { useContract } from "@/hooks/use-contract"
 import { useWallet } from "@/hooks/use-wallet"
@@ -130,6 +130,7 @@ export default function CreateTokenModal({ onClose, onCreate, existingTokens = [
         isAlpha: true,
         contractAddress: tokenAddress,
         isCompleted: false,
+        createdAt: new Date().toISOString(), // Add creation timestamp
       }
 
       const savedToken = await createTokenInDatabase(newToken)

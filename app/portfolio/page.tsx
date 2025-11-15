@@ -8,8 +8,8 @@ import { getUserPoints, updateUserPoints } from "@/lib/points-system"
 import Header from "@/components/header"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, TrendingUp, Coins, Award, RefreshCw, AlertCircle } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { ArrowLeft, TrendingUp, Coins, Award, RefreshCw, AlertCircle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface TokenHolding extends MemeToken {
   balance: string
@@ -252,10 +252,6 @@ export default function PortfolioPage() {
                         <span className="font-semibold text-foreground">
                           ${((token.marketCap || 0) / 1000000).toFixed(2)}M
                         </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Holders</span>
-                        <span className="font-semibold text-foreground">{token.holders}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Current Price</span>

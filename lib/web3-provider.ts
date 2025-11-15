@@ -9,7 +9,7 @@ let signer: any = null
 let isConnecting = false
 
 export async function getProvider() {
-  if (!window.ethereum) {
+  if (typeof window === 'undefined' || !window.ethereum) {
     throw new Error("MetaMask or Web3 wallet not found")
   }
 
@@ -31,12 +31,20 @@ export async function getJsonProvider() {
 }
 
 export async function getSigner() {
+  if (typeof window === 'undefined' || !window.ethereum) {
+    throw new Error("MetaMask or Web3 wallet not found")
+  }
+
   const prov = await getProvider()
+  
   if (!signer) {
     signer = await prov.getSigner()
   }
+  
   return signer
 }
+
+let contract: Contract | null = null
 
 export async function getContract() {
   const sig = await getSigner()
@@ -44,7 +52,9 @@ export async function getContract() {
   const jsonProv = await getJsonProvider()
 
   // Create a contract with the signer, but attach the json provider for read-only calls
-  const contract = new Contract(CONTRACT_CONFIG.address, ABI, sig)
+  if (!contract) {
+    contract = new Contract(CONTRACT_CONFIG.address, ABI, sig)
+  }
 
   // Override the provider on the contract to use the JSON provider for read operations
   Object.defineProperty(contract, "provider", {
@@ -57,7 +67,7 @@ export async function getContract() {
 }
 
 export async function switchNetwork() {
-  if (!window.ethereum) {
+  if (typeof window === 'undefined' || !window.ethereum) {
     throw new Error("MetaMask or Web3 wallet not found")
   }
 
@@ -68,7 +78,6 @@ export async function switchNetwork() {
     })
   } catch (error: any) {
     if (error.code === 4902) {
-      // Network not added, add it
       await window.ethereum.request({
         method: "wallet_addEthereumChain",
         params: [
@@ -92,18 +101,52 @@ export async function switchNetwork() {
 }
 
 export async function connectWallet() {
+  if (typeof window === 'undefined') {
+    throw new Error("Cannot connect wallet on server side")
+  }
+
+  if (!window.ethereum) {
+    throw new Error("No Web3 wallet detected. Please install MetaMask or another Web3 wallet.")
+  }
+
   if (isConnecting) {
-    console.log("[v0] Connection already in progress, waiting...")
     throw new Error("Connection already in progress. Please wait for the wallet popup to complete.")
   }
 
   try {
     isConnecting = true
-    await switchNetwork()
-    const prov = await getProvider()
-    const accounts = await prov.send("eth_requestAccounts", [])
-    return accounts[0]
-  } catch (error) {
+    
+    try {
+      await switchNetwork()
+    } catch (networkError: any) {
+      console.error("Network switch error:", networkError)
+      if (networkError.code === 4001) {
+        throw new Error("Network switch cancelled by user")
+      }
+      throw new Error(`Failed to switch network: ${networkError.message || 'Unknown error'}`)
+    }
+
+    try {
+      const prov = await getProvider()
+      const accounts = await prov.send("eth_requestAccounts", [])
+      
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts found in wallet")
+      }
+      
+      signer = null
+      return accounts[0]
+    } catch (accountError: any) {
+      console.error("Account request error:", accountError)
+      if (accountError.code === 4001) {
+        throw new Error("Connection cancelled by user")
+      }
+      if (accountError.code === -32002) {
+        throw new Error("Please check MetaMask - a connection request is already pending")
+      }
+      throw new Error(`Failed to connect wallet: ${accountError.message || 'Unknown error'}`)
+    }
+  } catch (error: any) {
     console.error("Failed to connect wallet:", error)
     throw error
   } finally {
@@ -112,10 +155,16 @@ export async function connectWallet() {
 }
 
 export async function getConnectedAddress() {
+  if (typeof window === 'undefined' || !window.ethereum) {
+    return null
+  }
+  
   try {
-    const sig = await getSigner()
-    return await sig.getAddress()
-  } catch {
+    const prov = await getProvider()
+    const accounts = await prov.send("eth_accounts", [])
+    return accounts.length > 0 ? accounts[0] : null
+  } catch (error) {
+    console.error("[v0] Error getting connected address:", error)
     return null
   }
 }
@@ -124,4 +173,14 @@ export async function getBalance(address: string) {
   const prov = await getJsonProvider() // Use jsonProvider for read-only operations
   const balance = await prov.getBalance(address)
   return formatEther(balance)
+}
+
+export async function disconnectWallet() {
+  provider = null
+  signer = null
+  contract = null
+  
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    localStorage.removeItem('walletConnected')
+  }
 }

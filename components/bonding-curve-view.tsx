@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, ExternalLink } from "lucide-react"
+import { ArrowLeft, ExternalLink } from 'lucide-react'
 import BondingCurveChart from "@/components/bonding-curve-chart"
 import TradePanel from "@/components/trade-panel"
 import { fetchAllTokens } from "@/lib/tokens"
 import type { MemeToken } from "@/lib/tokens"
 import type { mockTokens } from "@/lib/mock-data"
+import { formatLargeNumber } from "@/lib/utils"
 
 interface BondingCurveViewProps {
   token: (typeof mockTokens)[0]
@@ -20,7 +21,6 @@ export default function BondingCurveView({ token: initialToken, onBack }: Bondin
   const [token, setToken] = useState<MemeToken>(initialToken)
 
   const handleTradeComplete = async () => {
-    console.log("[v0] Trade completed, refreshing token data...")
     try {
       // Fetch all tokens and find the updated one
       const tokens = await fetchAllTokens()
@@ -28,10 +28,9 @@ export default function BondingCurveView({ token: initialToken, onBack }: Bondin
 
       if (updatedToken) {
         setToken(updatedToken)
-        console.log("[v0] Token data refreshed:", updatedToken)
       }
     } catch (error) {
-      console.error("[v0] Failed to refresh token data:", error)
+      console.error("Failed to refresh token data:", error)
     }
   }
 
@@ -80,14 +79,14 @@ export default function BondingCurveView({ token: initialToken, onBack }: Bondin
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Max Supply</p>
-                <p className="text-xl font-bold text-foreground">{(token.maxSupply / 1000000).toFixed(0)}M</p>
+                <p className="text-xl font-bold text-foreground">{formatLargeNumber(token.maxSupply)}</p>
               </div>
             </div>
           </Card>
 
           {/* Bonding Curve Chart */}
           <Card className="bg-card border-border p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">Bonding Curve</h2>
+            <h2 className="text-xl font-bold text-foreground mb-4">Bonding Curve Progress</h2>
             <BondingCurveChart token={token} />
           </Card>
 
@@ -98,21 +97,6 @@ export default function BondingCurveView({ token: initialToken, onBack }: Bondin
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Creator Address</p>
                 <p className="font-mono text-sm text-foreground break-all">{token.creator}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Creator Supply Holding</p>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-foreground font-semibold">{token.creatorSupplyPercent}% of max supply</span>
-                  <span className="text-muted-foreground text-sm">
-                    {((token.maxSupply * token.creatorSupplyPercent) / 100).toLocaleString()} tokens
-                  </span>
-                </div>
-                <div className="w-full bg-muted/30 rounded-full h-3">
-                  <div
-                    className="bg-gradient-to-r from-primary to-accent h-3 rounded-full"
-                    style={{ width: `${token.creatorSupplyPercent}%` }}
-                  />
-                </div>
               </div>
               {token.intuitionLink && (
                 <div>

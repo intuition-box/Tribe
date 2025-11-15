@@ -5,10 +5,11 @@ import type { mockTokens } from "@/lib/mock-data"
 interface TokenGridProps {
   tokens: typeof mockTokens
   onSelectToken: (token: (typeof mockTokens)[0]) => void
-  onTradeComplete?: () => void // Add callback to refresh tokens after trade
+  onTradeComplete?: () => void
+  onStarToggle?: () => void // Added star toggle callback
 }
 
-export default function TokenGrid({ tokens, onSelectToken, onTradeComplete }: TokenGridProps) {
+export default function TokenGrid({ tokens, onSelectToken, onTradeComplete, onStarToggle }: TokenGridProps) {
   const tribeOrientedTokens = tokens.filter((t) => t.intuitionLink && t.intuitionLink.trim() !== "")
   const allTokens = tokens.filter((t) => !t.intuitionLink || t.intuitionLink.trim() === "")
 
@@ -28,6 +29,7 @@ export default function TokenGrid({ tokens, onSelectToken, onTradeComplete }: To
                   onClick={() => onSelectToken(token)}
                   isAlpha
                   onTradeComplete={onTradeComplete}
+                  onStarToggle={onStarToggle}
                 />
               </div>
             ))}
@@ -48,6 +50,7 @@ export default function TokenGrid({ tokens, onSelectToken, onTradeComplete }: To
                 token={token}
                 onClick={() => onSelectToken(token)}
                 onTradeComplete={onTradeComplete}
+                onStarToggle={onStarToggle}
               />
             ))}
           </div>

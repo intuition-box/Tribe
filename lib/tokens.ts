@@ -17,6 +17,7 @@ export interface MemeToken {
   isAlpha: boolean
   contractAddress: string
   isCompleted: boolean
+  createdAt: string // Added to track token creation date
   creatorProfile?: {
     displayName?: string
     profileImage?: string
@@ -39,6 +40,7 @@ interface SupabaseToken {
   is_alpha: boolean
   contract_address: string
   is_completed: boolean
+  created_at: string // Added to track token creation date
   user_profiles?: {
     display_name?: string
     profile_image?: string
@@ -63,6 +65,7 @@ function supabaseToToken(data: SupabaseToken): MemeToken {
     isAlpha: data.is_alpha,
     contractAddress: data.contract_address,
     isCompleted: data.is_completed,
+    createdAt: data.created_at, // Map created_at field
     creatorProfile: data.user_profiles
       ? {
           displayName: data.user_profiles.display_name,
@@ -75,11 +78,42 @@ function supabaseToToken(data: SupabaseToken): MemeToken {
 // Fetch all tokens from database
 export async function fetchAllTokens(): Promise<MemeToken[]> {
   try {
+    if (typeof window === "undefined") {
+      console.log("[v0] fetchAllTokens called on server side, skipping")
+      return []
+    }
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.error("[v0] Supabase environment variables not configured")
+      return []
+    }
+
     const supabase = createClient()
+    if (!supabase) {
+      console.error("[v0] Supabase client not initialized")
+      return []
+    }
 
     const { data: tokens, error: tokensError } = await supabase
       .from("meme_tokens")
-      .select("*")
+      .select(`
+        id,
+        name,
+        symbol,
+        image,
+        current_price,
+        start_price,
+        market_cap,
+        max_supply,
+        current_supply,
+        holders,
+        creator,
+        intuition_link,
+        is_alpha,
+        contract_address,
+        is_completed,
+        created_at
+      `)
       .order("created_at", { ascending: false })
 
     if (tokensError) {
@@ -90,6 +124,8 @@ export async function fetchAllTokens(): Promise<MemeToken[]> {
     if (!tokens || tokens.length === 0) {
       return []
     }
+
+    console.log("[v0] Sample token from database:", tokens[0])
 
     // Fetch creator profiles separately
     const creatorAddresses = [...new Set(tokens.map((t) => t.creator))]
@@ -187,6 +223,8 @@ export async function checkLinkExists(link: string): Promise<boolean> {
     if (!normalized) return false
 
     const supabase = createClient()
+    if (!supabase) return false
+    
     const { data, error } = await supabase.from("meme_tokens").select("id").eq("intuition_link", normalized).limit(1)
 
     if (error) {
@@ -205,6 +243,13 @@ export async function checkLinkExists(link: string): Promise<boolean> {
 export async function createTokenInDatabase(token: Omit<MemeToken, "id">): Promise<MemeToken | null> {
   try {
     const supabase = createClient()
+    if (!supabase) {
+      console.error("[v0] Supabase client not initialized")
+      return null
+    }
+    
+    const createdAt = token.createdAt || new Date().toISOString()
+    
     const { data, error } = await supabase
       .from("meme_tokens")
       .insert([
@@ -223,6 +268,7 @@ export async function createTokenInDatabase(token: Omit<MemeToken, "id">): Promi
           is_alpha: token.isAlpha,
           contract_address: token.contractAddress,
           is_completed: token.isCompleted,
+          created_at: createdAt, // Use the timestamp
         },
       ])
       .select()
@@ -253,6 +299,10 @@ export async function updateTokenInDatabase(
 ): Promise<boolean> {
   try {
     const supabase = createClient()
+    if (!supabase) {
+      console.error("[v0] Supabase client not initialized")
+      return false
+    }
 
     // Build the update object with snake_case keys
     const dbUpdates: any = {}
@@ -261,13 +311,13 @@ export async function updateTokenInDatabase(
 
     if (updates.currentSupply !== undefined) {
       // Auto-calculate market cap using bonding curve formula
-      // Market Cap = Current Price × Circulating Supply (700M tokens)
       const calculatedMarketCap = calculateMarketCap(updates.currentSupply)
       dbUpdates.market_cap = calculatedMarketCap
     }
 
     if (updates.holders !== undefined) dbUpdates.holders = Math.floor(updates.holders)
     if (updates.isCompleted !== undefined) dbUpdates.is_completed = updates.isCompleted
+
 
     const { error } = await supabase.from("meme_tokens").update(dbUpdates).eq("contract_address", contractAddress)
 
@@ -287,6 +337,11 @@ export async function updateTokenInDatabase(
 export async function deleteAllTokens(): Promise<boolean> {
   try {
     const supabase = createClient()
+    if (!supabase) {
+      console.error("[v0] Supabase client not initialized")
+      return false
+    }
+    
     const { error } = await supabase.from("meme_tokens").delete().neq("id", "00000000-0000-0000-0000-000000000000") // Delete all rows
 
     if (error) {

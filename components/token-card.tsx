@@ -2,26 +2,38 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ShoppingCart, TrendingDown, ExternalLink, Copy } from "lucide-react"
+import { ShoppingCart, TrendingDown, ExternalLink, Copy, Star } from 'lucide-react'
 import { calculateBondingCurveProgress } from "@/lib/bonding-curve"
 import QuickTradeModal from "./quick-trade-modal"
+import { toggleStarToken, isTokenStarred } from "@/lib/starred-tokens"
+import { useWallet } from "@/hooks/use-wallet"
 import type { mockTokens } from "@/lib/mock-data"
 
 interface TokenCardProps {
   token: (typeof mockTokens)[0]
   onClick: () => void
   isAlpha?: boolean
-  onTradeComplete?: () => void // Add callback to refresh token data
+  onTradeComplete?: () => void
+  onStarToggle?: () => void // Added callback for star toggle
 }
 
-export default function TokenCard({ token, onClick, isAlpha, onTradeComplete }: TokenCardProps) {
+export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, onStarToggle }: TokenCardProps) {
   const [showTradeModal, setShowTradeModal] = useState(false)
   const [tradeMode, setTradeMode] = useState<"buy" | "sell">("buy")
   const [copied, setCopied] = useState(false)
+  const [isStarred, setIsStarred] = useState(false)
+  const [isStarring, setIsStarring] = useState(false)
+  const { address } = useWallet()
+
+  useEffect(() => {
+    if (address) {
+      isTokenStarred(address, token.contractAddress).then(setIsStarred)
+    }
+  }, [address, token.contractAddress])
 
   console.log("[v0] TokenCard rendering with token:", {
     name: token.name,
@@ -70,6 +82,35 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete }: 
     }
   }
 
+  const handleStarClick = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    console.log("[v0] Star button clicked")
+    
+    if (!address) {
+      console.log("[v0] No wallet address, showing alert")
+      alert("Please connect your wallet to star tokens")
+      return
+    }
+
+    console.log("[v0] Starting star toggle for token:", token.name)
+    setIsStarring(true)
+    try {
+      const newStarredState = await toggleStarToken(address, token.contractAddress)
+      console.log("[v0] Star toggle result:", newStarredState)
+      setIsStarred(newStarredState)
+      if (onStarToggle) {
+        console.log("[v0] Calling onStarToggle callback")
+        onStarToggle()
+      }
+    } catch (error) {
+      console.error("[v0] Failed to toggle star:", error)
+      alert("Failed to star/unstar token. Please try again.")
+    } finally {
+      setIsStarring(false)
+    }
+  }
+
   return (
     <>
       <Card
@@ -93,6 +134,16 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete }: 
               </div>
             </div>
             <div className="flex flex-col gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleStarClick}
+                disabled={isStarring || !address}
+                className={`h-7 w-7 p-0 hover:bg-muted ${isStarred ? "text-yellow-500" : "text-muted-foreground"}`}
+                title={isStarred ? "Unstar token" : "Star token"}
+              >
+                <Star className={`w-4 h-4 ${isStarred ? "fill-current" : ""}`} />
+              </Button>
               {isAlpha && <Badge className="bg-accent text-accent-foreground text-xs">Alpha</Badge>}
               {token.isCompleted && (
                 <Badge className="bg-orange-600 text-white text-xs whitespace-nowrap">Launch Complete</Badge>
@@ -129,24 +180,6 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete }: 
                   <span className="truncate">View on Intuition Portal</span>
                   <ExternalLink className="w-3 h-3 flex-shrink-0" />
                 </button>
-              </div>
-            </div>
-          )}
-
-          {token.creatorProfile && (token.creatorProfile.displayName || token.creatorProfile.profileImage) && (
-            <div className="flex items-center gap-2 pb-2 border-b border-border">
-              {token.creatorProfile.profileImage && (
-                <img
-                  src={token.creatorProfile.profileImage || "/placeholder.svg"}
-                  alt={token.creatorProfile.displayName || "Creator"}
-                  className="w-5 h-5 rounded-full object-cover"
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-muted-foreground">Created by</p>
-                <p className="text-xs font-medium text-foreground truncate">
-                  {token.creatorProfile.displayName || `${token.creator.slice(0, 6)}...${token.creator.slice(-4)}`}
-                </p>
               </div>
             </div>
           )}

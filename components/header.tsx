@@ -3,9 +3,9 @@
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { useState } from "react"
-import { Menu, LogOut, Settings, Wallet, Sparkles, TrendingUp, Plus } from "lucide-react"
+import { Menu, LogOut, Settings, Wallet, Sparkles, TrendingUp, Plus } from 'lucide-react'
 import { useWallet } from "@/hooks/use-wallet"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 import HeaderProfile from "@/components/header-profile"
 
 interface HeaderProps {
@@ -21,7 +21,6 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
 
   const handleConnect = async () => {
     await connect()
-    setShowMenu(false)
   }
 
   const handleDisconnect = async () => {
@@ -35,7 +34,7 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
 
   return (
     <header className="border-b border-border bg-black sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="flex items-center justify-between px-4 py-4">
         <div className="flex items-center gap-6">
           <div className="relative w-56 h-20 cursor-pointer" onClick={() => router.push("/")}>
             <Image src="/tribe-logo.png" alt="TRIBE Logo" fill className="object-contain" priority />
@@ -51,16 +50,9 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-4">
-          {address && (
-            <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-muted/30">
-              <span className="text-sm text-muted-foreground">Balance:</span>
-              <span className="font-semibold text-foreground">{Number(balance).toFixed(2)} TRUST</span>
-            </div>
-          )}
+          {address && <HeaderProfile />}
 
-          <HeaderProfile />
-
-          {hasAlphaAccess && (
+          {address && hasAlphaAccess && (
             <Button
               onClick={onAlphaClick}
               className="bg-gradient-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold relative overflow-hidden group"
@@ -71,67 +63,55 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
             </Button>
           )}
 
-          <div className="relative">
+          {!address ? (
             <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setShowMenu(!showMenu)}
-              className="border-border hover:bg-muted/50"
+              onClick={handleConnect}
+              disabled={isConnecting}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6"
             >
-              <Menu className="w-5 h-5" />
+              <Wallet className="w-4 h-4 mr-2" />
+              {isConnecting ? "Connecting..." : "Connect Wallet"}
             </Button>
+          ) : (
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowMenu(!showMenu)}
+                className="border-border hover:bg-muted/50"
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
 
-            {showMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg z-50">
-                {address ? (
-                  <>
-                    <div className="p-3 border-b border-border">
-                      <div className="flex items-center gap-2 px-3 py-2 rounded bg-muted/30">
-                        <Wallet className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-mono text-foreground">{formatAddress(address)}</span>
-                      </div>
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg z-50">
+                  <div className="p-3 border-b border-border">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded bg-muted/30">
+                      <Wallet className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-mono text-foreground">{formatAddress(address)}</span>
                     </div>
-                    <button
-                      onClick={() => {
-                        router.push("/portfolio")
-                        setShowMenu(false)
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
-                    >
-                      <TrendingUp className="w-4 h-4" />
-                      Portfolio
-                    </button>
-                    <button
-                      onClick={() => {
-                        router.push("/settings")
-                        setShowMenu(false)
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
-                    >
-                      <Settings className="w-4 h-4" />
-                      Settings
-                    </button>
-                    <button
-                      onClick={handleDisconnect}
-                      className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-muted/50 flex items-center gap-2 transition-colors border-t border-border"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Disconnect
-                    </button>
-                  </>
-                ) : (
+                  </div>
                   <button
-                    onClick={handleConnect}
-                    disabled={isConnecting}
-                    className="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors font-semibold"
+                    onClick={() => {
+                      router.push("/portfolio")
+                      setShowMenu(false)
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
                   >
-                    <Wallet className="w-4 h-4" />
-                    {isConnecting ? "Connecting..." : "Connect Wallet"}
+                    <TrendingUp className="w-4 h-4" />
+                    Portfolio
                   </button>
-                )}
-              </div>
-            )}
-          </div>
+                  <button
+                    onClick={handleDisconnect}
+                    className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-muted/50 flex items-center gap-2 transition-colors border-t border-border"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Disconnect
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </header>
