@@ -37,7 +37,7 @@ export default function Sidebar() {
     { icon: ArrowLeftRight, label: "DEX", path: "https://trustswap.intuition.box/home", external: true },
     { icon: Vote, label: "Vote", path: "/vote", external: false },
     { icon: Trophy, label: "Leaderboard", path: "/leaderboard", external: false },
-    { icon: BookOpen, label: "Docs", path: "https://github.com/u4believe/tribe-documentation.git", external: true },
+    { icon: BookOpen, label: "Docs", path: "https://tribe-documentation.vercel.app/", external: true },
     { icon: HelpCircle, label: "FAQ", path: "/faq", external: false },
   ]
 
