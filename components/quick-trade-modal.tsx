@@ -78,7 +78,7 @@ export default function QuickTradeModal({
 
     try {
       if (mode === "buy") {
-        const minTokensOut = (Number.parseFloat(amount) * 0.99).toFixed(6)
+        const minTokensOut = (Number.parseFloat(amount) * 0.98).toFixed(6)
         console.log("[v0] Quick trade - Buying tokens:", {
           contractAddress: token.contractAddress,
           trustAmount,
@@ -211,7 +211,7 @@ export default function QuickTradeModal({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Slippage</span>
-              <span className="text-foreground font-semibold">1%</span>
+              <span className="text-foreground font-semibold">2%</span>
             </div>
           </div>
 

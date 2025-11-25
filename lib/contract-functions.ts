@@ -1,5 +1,7 @@
-import { getContract } from "./web3-provider"
+import { getContract, getJsonProvider } from "./web3-provider"
 import { parseEther, formatEther, Contract, toBigInt } from "ethers"
+import { CONTRACT_CONFIG } from "./contract-config"
+import ABI from "./contract-abi.json"
 
 // ERC20 ABI for token approval
 const ERC20_ABI = [
@@ -103,15 +105,34 @@ export async function buyTokens(tokenAddress: string, trustAmount: string, minTo
     } catch (gasError: any) {
       console.error("[v0] buyTokens - Gas estimation failed:", gasError)
 
-      // Provide more helpful error messages based on common failures
-      if (gasError.message?.includes("insufficient funds")) {
-        throw new Error("Insufficient TRUST balance to complete this purchase")
-      } else if (gasError.message?.includes("execution reverted")) {
+      const errorMessage = gasError.message || gasError.toString()
+
+      // Check for custom errors from the contract
+      if (errorMessage.includes("SlippageTooHigh")) {
         throw new Error(
-          "Transaction would fail. Possible reasons: insufficient TRUST, invalid slippage settings, or token launch completed",
+          "Price changed too much during transaction. Try increasing slippage tolerance or reducing trade amount.",
+        )
+      } else if (errorMessage.includes("TokenLaunchCompleted")) {
+        throw new Error("Token launch has been completed. Trading is no longer available through the bonding curve.")
+      } else if (errorMessage.includes("CreatorBuyLimitExceeded")) {
+        throw new Error("Creator has reached the maximum buy limit for this token.")
+      } else if (errorMessage.includes("ExceedsMaxSupply")) {
+        throw new Error("This purchase would exceed the maximum token supply. Try buying a smaller amount.")
+      } else if (errorMessage.includes("MustSendETH") || errorMessage.includes("NoTokensToBuy")) {
+        throw new Error("Invalid purchase amount. Please enter a valid TRUST amount.")
+      } else if (errorMessage.includes("insufficient funds") || errorMessage.includes("sender doesn't have enough")) {
+        throw new Error("Insufficient TRUST balance. You need more TRUST tokens to complete this purchase.")
+      } else if (errorMessage.includes("execution reverted")) {
+        throw new Error(
+          "Transaction would fail. Please check: you have enough TRUST, token exists, and launch is not completed.",
+        )
+      } else if (errorMessage.includes("missing revert data")) {
+        throw new Error(
+          "Unable to complete transaction. Possible reasons: insufficient TRUST balance, slippage too high, or token launch completed. Please check your wallet balance and try again.",
         )
       }
-      throw new Error(`Transaction validation failed: ${gasError.message || "Unknown error"}`)
+
+      throw new Error(`Transaction validation failed: ${errorMessage}`)
     }
 
     const tx = await contract.buyTokens(tokenAddress, minTokensOutWei, {
@@ -294,4 +315,196 @@ export async function calculateMarketCap(tokenAddress: string): Promise<number> 
     console.error("Failed to calculate market cap:", error)
     return 0
   }
+}
+
+export async function addTokenComment(tokenAddress: string, commentText: string) {
+  try {
+    const contract = await getContract()
+
+    // The contract has a fixed comment fee of 0.025 ETH (TRUST)
+    const commentFee = parseEther("0.025")
+
+    const tx = await contract.addComment(tokenAddress, commentText, {
+      value: commentFee,
+    })
+
+    console.log("Comment transaction sent:", tx.hash)
+    const receipt = await tx.wait()
+    console.log("Comment posted successfully")
+    return receipt
+  } catch (error: any) {
+    console.error("Failed to add comment:", error)
+
+    if (error.message?.includes("user rejected")) {
+      throw new Error("Transaction rejected by user")
+    } else if (error.message?.includes("insufficient funds")) {
+      throw new Error("Insufficient TRUST balance to post comment")
+    }
+
+    throw error
+  }
+}
+
+export async function getTokenComments(tokenAddress: string) {
+  try {
+    const contract = await getContract()
+    const comments = await contract.getComments(tokenAddress)
+
+    return comments.map((comment: any) => ({
+      commenter: comment.commenter,
+      text: comment.text,
+      timestamp: Number(comment.timestamp),
+    }))
+  } catch (error) {
+    console.error("Failed to get comments:", error)
+    return []
+  }
+}
+
+export async function getTokenHolders(tokenAddress: string): Promise<string[]> {
+  try {
+    const contract = await getContract()
+    const holders = await contract.getTokenHolders(tokenAddress)
+    return holders
+  } catch (error) {
+    console.error("Failed to get token holders:", error)
+    return []
+  }
+}
+
+export async function getTokenHolderBalance(tokenAddress: string, holderAddress: string): Promise<string> {
+  try {
+    const contract = await getContract()
+    const signer = await contract.runner
+
+    // Get the token contract instance
+    const tokenContract = new Contract(tokenAddress, ERC20_ABI, signer)
+
+    // Get the holder's balance
+    const balance = await tokenContract.balanceOf(holderAddress)
+    return formatEther(balance)
+  } catch (error) {
+    console.error("Failed to get holder balance:", error)
+    return "0"
+  }
+}
+
+export async function isTokenUnlocked(tokenAddress: string): Promise<boolean> {
+  try {
+    const jsonProvider = await getJsonProvider()
+
+    const readOnlyContract = new Contract(CONTRACT_CONFIG.address, ABI, jsonProvider)
+    const isUnlocked = await readOnlyContract.tokenUnlocked(tokenAddress)
+    return isUnlocked
+  } catch (error) {
+    console.error("Failed to check token unlock status:", error)
+    return false
+  }
+}
+
+export async function getUserVolume(
+  userAddress: string,
+): Promise<{ buyVolume: string; sellVolume: string; totalVolume: string }> {
+  try {
+    console.log(`[v0] getUserVolume START for: ${userAddress}`)
+
+    if (!userAddress || !userAddress.startsWith("0x")) {
+      console.log(`[v0] getUserVolume - Invalid address format`)
+      return { buyVolume: "0", sellVolume: "0", totalVolume: "0" }
+    }
+
+    console.log(`[v0] getUserVolume - Encoding function call data...`)
+
+    // Manually encode the function call
+    // getUserVolume(address) function signature: 0x3a91...
+    const { Interface } = await import("ethers")
+    const iface = new Interface(ABI)
+    const functionData = iface.encodeFunctionData("getUserVolume", [userAddress])
+
+    console.log(`[v0] getUserVolume - Making direct RPC call...`)
+
+    // Make direct RPC call using fetch
+    const response = await fetch(CONTRACT_CONFIG.rpcUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_call",
+        params: [
+          {
+            to: CONTRACT_CONFIG.address,
+            data: functionData,
+          },
+          "latest",
+        ],
+      }),
+    })
+
+    if (!response.ok) {
+      console.log(`[v0] getUserVolume - RPC call failed with status ${response.status}`)
+      return { buyVolume: "0", sellVolume: "0", totalVolume: "0" }
+    }
+
+    const jsonResponse = await response.json()
+
+    if (jsonResponse.error) {
+      console.log(`[v0] getUserVolume - RPC returned error:`, jsonResponse.error.message)
+      return { buyVolume: "0", sellVolume: "0", totalVolume: "0" }
+    }
+
+    const result = jsonResponse.result
+    console.log(`[v0] getUserVolume - Got RPC result:`, result)
+
+    // Decode the result
+    const decoded = iface.decodeFunctionResult("getUserVolume", result)
+    console.log(`[v0] getUserVolume - Decoded result:`, decoded)
+
+    // The function returns [buyVolume, sellVolume]
+    const buyVolumeRaw = decoded[0] || 0n
+    const sellVolumeRaw = decoded[1] || 0n
+
+    const buyVolume = formatEther(buyVolumeRaw)
+    const sellVolume = formatEther(sellVolumeRaw)
+    const totalVolume = (Number.parseFloat(buyVolume) + Number.parseFloat(sellVolume)).toString()
+
+    console.log(
+      `[v0] getUserVolume SUCCESS - ${userAddress}: Buy=${buyVolume}, Sell=${sellVolume}, Total=${totalVolume}`,
+    )
+
+    return {
+      buyVolume,
+      sellVolume,
+      totalVolume,
+    }
+  } catch (err) {
+    console.log(`[v0] getUserVolume FAILED for ${userAddress}`)
+    return { buyVolume: "0", sellVolume: "0", totalVolume: "0" }
+  }
+}
+
+export async function getBatchUserVolumes(
+  userAddresses: string[],
+): Promise<Map<string, { buyVolume: string; sellVolume: string; totalVolume: string }>> {
+  const volumeMap = new Map()
+
+  try {
+    // Fetch volumes for all users in parallel
+    const volumePromises = userAddresses.map(async (address) => {
+      const volume = await getUserVolume(address)
+      return { address, volume }
+    })
+
+    const results = await Promise.all(volumePromises)
+
+    results.forEach(({ address, volume }) => {
+      volumeMap.set(address, volume)
+    })
+  } catch (error) {
+    console.error("Failed to fetch batch user volumes:", error)
+  }
+
+  return volumeMap
 }

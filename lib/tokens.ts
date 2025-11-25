@@ -78,22 +78,32 @@ function supabaseToToken(data: SupabaseToken): MemeToken {
 // Fetch all tokens from database
 export async function fetchAllTokens(): Promise<MemeToken[]> {
   try {
+    console.log("[v0] fetchAllTokens called")
+
     if (typeof window === "undefined") {
       console.log("[v0] fetchAllTokens called on server side, skipping")
       return []
     }
 
+    console.log("[v0] Environment check:", {
+      hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    })
+
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       console.error("[v0] Supabase environment variables not configured")
-      return []
+      throw new Error("Database not configured. Please contact support.")
     }
 
+    console.log("[v0] Creating Supabase client...")
     const supabase = createClient()
+
     if (!supabase) {
-      console.error("[v0] Supabase client not initialized")
-      return []
+      console.error("[v0] Supabase client failed to initialize")
+      throw new Error("Database connection failed. Please try again.")
     }
 
+    console.log("[v0] Fetching tokens from database...")
     const { data: tokens, error: tokensError } = await supabase
       .from("meme_tokens")
       .select(`
@@ -117,22 +127,31 @@ export async function fetchAllTokens(): Promise<MemeToken[]> {
       .order("created_at", { ascending: false })
 
     if (tokensError) {
-      console.error("[v0] Error fetching tokens:", tokensError)
-      return []
+      console.error("[v0] Error fetching tokens from database:", tokensError)
+      throw new Error(`Database error: ${tokensError.message}`)
     }
+
+    console.log("[v0] Raw tokens data:", tokens)
+    console.log("[v0] Tokens count:", tokens?.length || 0)
 
     if (!tokens || tokens.length === 0) {
+      console.log("[v0] No tokens found in database")
       return []
     }
 
+    console.log("[v0] Fetched", tokens.length, "tokens from database")
     console.log("[v0] Sample token from database:", tokens[0])
 
     // Fetch creator profiles separately
     const creatorAddresses = [...new Set(tokens.map((t) => t.creator))]
+    console.log("[v0] Fetching profiles for creators:", creatorAddresses)
+
     const { data: profiles } = await supabase
       .from("user_profiles")
       .select("wallet_address, display_name, profile_image")
       .in("wallet_address", creatorAddresses)
+
+    console.log("[v0] Fetched", profiles?.length || 0, "creator profiles")
 
     // Create a map of profiles for quick lookup
     const profileMap = new Map((profiles || []).map((p) => [p.wallet_address, p]))
@@ -151,10 +170,12 @@ export async function fetchAllTokens(): Promise<MemeToken[]> {
       })
     })
 
+    console.log("[v0] Returning", result.length, "formatted tokens")
+    console.log("[v0] Sample formatted token:", result[0])
     return result
-  } catch (error) {
-    console.error("[v0] Failed to fetch tokens:", error)
-    return []
+  } catch (error: any) {
+    console.error("[v0] Error fetching tokens:", error)
+    throw error
   }
 }
 
@@ -224,7 +245,7 @@ export async function checkLinkExists(link: string): Promise<boolean> {
 
     const supabase = createClient()
     if (!supabase) return false
-    
+
     const { data, error } = await supabase.from("meme_tokens").select("id").eq("intuition_link", normalized).limit(1)
 
     if (error) {
@@ -242,46 +263,74 @@ export async function checkLinkExists(link: string): Promise<boolean> {
 // Create new token
 export async function createTokenInDatabase(token: Omit<MemeToken, "id">): Promise<MemeToken | null> {
   try {
+    console.log("[v0] createTokenInDatabase called with:", {
+      name: token.name,
+      symbol: token.symbol,
+      contractAddress: token.contractAddress,
+      creator: token.creator,
+    })
+
     const supabase = createClient()
     if (!supabase) {
       console.error("[v0] Supabase client not initialized")
       return null
     }
-    
-    const createdAt = token.createdAt || new Date().toISOString()
-    
-    const { data, error } = await supabase
-      .from("meme_tokens")
-      .insert([
-        {
-          name: token.name,
-          symbol: token.symbol,
-          image: token.image,
-          current_price: token.currentPrice,
-          start_price: token.startPrice,
-          market_cap: token.marketCap,
-          max_supply: Math.floor(token.maxSupply),
-          current_supply: Math.floor(token.currentSupply),
-          holders: Math.floor(token.holders),
-          creator: token.creator,
-          intuition_link: token.intuitionLink || null,
-          is_alpha: token.isAlpha,
-          contract_address: token.contractAddress,
-          is_completed: token.isCompleted,
-          created_at: createdAt, // Use the timestamp
-        },
-      ])
-      .select()
-      .single()
 
-    if (error) {
-      console.error("[v0] Error creating token:", error)
+    console.log("[v0] Supabase client created successfully")
+
+    console.log("[v0] Ensuring user profile exists for creator:", token.creator)
+    const profileCreated = await ensureUserProfileExists(token.creator)
+    if (!profileCreated) {
+      console.error("[v0] Failed to create user profile, cannot create token")
       return null
     }
 
-    return data ? supabaseToToken(data) : null
+    const createdAt = token.createdAt || new Date().toISOString()
+    console.log("[v0] Using timestamp:", createdAt)
+
+    const insertData = {
+      name: token.name,
+      symbol: token.symbol,
+      image: token.image,
+      current_price: token.currentPrice,
+      start_price: token.startPrice,
+      market_cap: token.marketCap,
+      max_supply: Math.floor(token.maxSupply),
+      current_supply: Math.floor(token.currentSupply),
+      holders: Math.floor(token.holders),
+      creator: token.creator,
+      intuition_link: token.intuitionLink || null,
+      is_alpha: token.isAlpha,
+      contract_address: token.contractAddress,
+      is_completed: token.isCompleted,
+      created_at: createdAt,
+    }
+
+    console.log("[v0] Inserting token data:", insertData)
+
+    const { data, error } = await supabase.from("meme_tokens").insert([insertData]).select().single()
+
+    if (error) {
+      console.error("[v0] Error creating token in database:", error)
+      console.error("[v0] Error details:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+      return null
+    }
+
+    console.log("[v0] Token inserted successfully:", data)
+    const formattedToken = data ? supabaseToToken(data) : null
+    console.log("[v0] Formatted token:", formattedToken)
+    return formattedToken
   } catch (error) {
-    console.error("[v0] Failed to create token:", error)
+    console.error("[v0] Failed to create token (exception):", error)
+    if (error instanceof Error) {
+      console.error("[v0] Error message:", error.message)
+      console.error("[v0] Error stack:", error.stack)
+    }
     return null
   }
 }
@@ -318,7 +367,6 @@ export async function updateTokenInDatabase(
     if (updates.holders !== undefined) dbUpdates.holders = Math.floor(updates.holders)
     if (updates.isCompleted !== undefined) dbUpdates.is_completed = updates.isCompleted
 
-
     const { error } = await supabase.from("meme_tokens").update(dbUpdates).eq("contract_address", contractAddress)
 
     if (error) {
@@ -341,17 +389,84 @@ export async function deleteAllTokens(): Promise<boolean> {
       console.error("[v0] Supabase client not initialized")
       return false
     }
-    
-    const { error } = await supabase.from("meme_tokens").delete().neq("id", "00000000-0000-0000-0000-000000000000") // Delete all rows
 
-    if (error) {
-      console.error("[v0] Error deleting tokens:", error)
+    // First, get all token contract addresses
+    const { data: allTokens } = await supabase.from("meme_tokens").select("contract_address")
+
+    if (!allTokens || allTokens.length === 0) {
+      console.log("[v0] No tokens to delete")
+      return true
+    }
+
+    const tokenAddresses = allTokens.map((t) => t.contract_address)
+
+    // Delete all starred tokens that reference these tokens
+    const { error: starredError } = await supabase.from("starred_tokens").delete().in("token_address", tokenAddresses)
+
+    if (starredError) {
+      console.error("[v0] Error clearing starred tokens:", starredError)
+      // Don't fail the whole operation if starred tokens deletion fails
+    }
+
+    // Delete all tokens using neq with a non-existent id to match all rows
+    const { error: tokensError } = await supabase
+      .from("meme_tokens")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000")
+
+    if (tokensError) {
+      console.error("[v0] Error deleting tokens:", tokensError)
       return false
     }
 
+    console.log("[v0] All tokens and starred references deleted successfully")
     return true
   } catch (error) {
     console.error("[v0] Failed to delete tokens:", error)
+    return false
+  }
+}
+
+export async function ensureUserProfileExists(walletAddress: string): Promise<boolean> {
+  try {
+    const supabase = createClient()
+    if (!supabase) {
+      console.error("[v0] Supabase client not initialized")
+      return false
+    }
+
+    // Check if profile already exists
+    const { data: existingProfile } = await supabase
+      .from("user_profiles")
+      .select("wallet_address")
+      .eq("wallet_address", walletAddress)
+      .single()
+
+    if (existingProfile) {
+      console.log("[v0] User profile already exists for:", walletAddress)
+      return true
+    }
+
+    // Create new profile
+    console.log("[v0] Creating user profile for:", walletAddress)
+    const { error } = await supabase.from("user_profiles").insert([
+      {
+        wallet_address: walletAddress,
+        display_name: null,
+        bio: null,
+        profile_image: null,
+      },
+    ])
+
+    if (error) {
+      console.error("[v0] Error creating user profile:", error)
+      return false
+    }
+
+    console.log("[v0] User profile created successfully")
+    return true
+  } catch (error) {
+    console.error("[v0] Failed to ensure user profile exists:", error)
     return false
   }
 }

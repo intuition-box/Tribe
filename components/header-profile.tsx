@@ -5,7 +5,7 @@ import { useWallet } from "@/hooks/use-wallet"
 import { getUserProfile } from "@/lib/user-profiles"
 import type { UserProfile } from "@/lib/user-profiles"
 import Image from "next/image"
-import { User } from 'lucide-react'
+import { User } from "lucide-react"
 
 export default function HeaderProfile() {
   const { address } = useWallet()
@@ -14,10 +14,12 @@ export default function HeaderProfile() {
 
   useEffect(() => {
     const loadProfile = async () => {
-      if (!address || isLoading) {
+      if (!address) {
         setProfile(null)
         return
       }
+
+      if (isLoading) return
 
       setIsLoading(true)
       try {
@@ -32,7 +34,7 @@ export default function HeaderProfile() {
     }
 
     loadProfile()
-  }, [address, isLoading])
+  }, [address])
 
   if (!address) return null
 

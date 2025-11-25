@@ -15,10 +15,10 @@ export async function getUserProfile(walletAddress: string): Promise<UserProfile
   try {
     const supabase = createBrowserClient()
     if (!supabase) {
-      console.error("[v0] Supabase client not initialized")
+      console.warn("[v0] Supabase client not initialized - check environment variables")
       return null
     }
-    
+
     const { data, error } = await supabase
       .from("user_profiles")
       .select("*")
@@ -36,7 +36,11 @@ export async function getUserProfile(walletAddress: string): Promise<UserProfile
 
     return data
   } catch (error) {
-    console.error("[v0] Error fetching user profile:", error)
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      console.warn("[v0] Network error fetching user profile - Supabase may not be configured")
+    } else {
+      console.error("[v0] Error fetching user profile:", error)
+    }
     return null
   }
 }

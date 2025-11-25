@@ -7,9 +7,10 @@ let jsonProvider: JsonRpcProvider | null = null
 let signer: any = null
 
 let isConnecting = false
+let connectionPromise: Promise<string> | null = null
 
 export async function getProvider() {
-  if (typeof window === 'undefined' || !window.ethereum) {
+  if (typeof window === "undefined" || !window.ethereum) {
     throw new Error("MetaMask or Web3 wallet not found")
   }
 
@@ -31,16 +32,16 @@ export async function getJsonProvider() {
 }
 
 export async function getSigner() {
-  if (typeof window === 'undefined' || !window.ethereum) {
+  if (typeof window === "undefined" || !window.ethereum) {
     throw new Error("MetaMask or Web3 wallet not found")
   }
 
   const prov = await getProvider()
-  
+
   if (!signer) {
     signer = await prov.getSigner()
   }
-  
+
   return signer
 }
 
@@ -67,7 +68,7 @@ export async function getContract() {
 }
 
 export async function switchNetwork() {
-  if (typeof window === 'undefined' || !window.ethereum) {
+  if (typeof window === "undefined" || !window.ethereum) {
     throw new Error("MetaMask or Web3 wallet not found")
   }
 
@@ -101,7 +102,7 @@ export async function switchNetwork() {
 }
 
 export async function connectWallet() {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     throw new Error("Cannot connect wallet on server side")
   }
 
@@ -109,56 +110,64 @@ export async function connectWallet() {
     throw new Error("No Web3 wallet detected. Please install MetaMask or another Web3 wallet.")
   }
 
-  if (isConnecting) {
-    throw new Error("Connection already in progress. Please wait for the wallet popup to complete.")
+  if (isConnecting && connectionPromise) {
+    console.log("[v0] Connection already in progress, returning existing promise")
+    return connectionPromise
   }
 
-  try {
-    isConnecting = true
-    
+  connectionPromise = (async () => {
     try {
-      await switchNetwork()
-    } catch (networkError: any) {
-      console.error("Network switch error:", networkError)
-      if (networkError.code === 4001) {
-        throw new Error("Network switch cancelled by user")
-      }
-      throw new Error(`Failed to switch network: ${networkError.message || 'Unknown error'}`)
-    }
+      isConnecting = true
 
-    try {
-      const prov = await getProvider()
-      const accounts = await prov.send("eth_requestAccounts", [])
-      
-      if (!accounts || accounts.length === 0) {
-        throw new Error("No accounts found in wallet")
+      try {
+        await switchNetwork()
+      } catch (networkError: any) {
+        console.error("Network switch error:", networkError)
+        if (networkError.code === 4001) {
+          throw new Error("Network switch cancelled by user")
+        }
+        throw new Error(`Failed to switch network: ${networkError.message || "Unknown error"}`)
       }
-      
-      signer = null
-      return accounts[0]
-    } catch (accountError: any) {
-      console.error("Account request error:", accountError)
-      if (accountError.code === 4001) {
-        throw new Error("Connection cancelled by user")
+
+      try {
+        const prov = await getProvider()
+        const accounts = await prov.send("eth_requestAccounts", [])
+
+        if (!accounts || accounts.length === 0) {
+          throw new Error("No accounts found in wallet")
+        }
+
+        signer = null
+        return accounts[0]
+      } catch (accountError: any) {
+        console.error("Account request error:", accountError)
+        if (accountError.code === 4001) {
+          throw new Error("Connection cancelled by user")
+        }
+        if (accountError.code === -32002) {
+          throw new Error(
+            "A wallet connection request is already pending. Please check your wallet extension and complete or cancel the existing request first.",
+          )
+        }
+        throw new Error(`Failed to connect wallet: ${accountError.message || "Unknown error"}`)
       }
-      if (accountError.code === -32002) {
-        throw new Error("Please check MetaMask - a connection request is already pending")
-      }
-      throw new Error(`Failed to connect wallet: ${accountError.message || 'Unknown error'}`)
+    } catch (error: any) {
+      console.error("Failed to connect wallet:", error)
+      throw error
+    } finally {
+      isConnecting = false
+      connectionPromise = null
     }
-  } catch (error: any) {
-    console.error("Failed to connect wallet:", error)
-    throw error
-  } finally {
-    isConnecting = false
-  }
+  })()
+
+  return connectionPromise
 }
 
 export async function getConnectedAddress() {
-  if (typeof window === 'undefined' || !window.ethereum) {
+  if (typeof window === "undefined" || !window.ethereum) {
     return null
   }
-  
+
   try {
     const prov = await getProvider()
     const accounts = await prov.send("eth_accounts", [])
@@ -179,8 +188,60 @@ export async function disconnectWallet() {
   provider = null
   signer = null
   contract = null
-  
-  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-    localStorage.removeItem('walletConnected')
+  jsonProvider = null
+
+  if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+    localStorage.removeItem("walletConnected")
   }
+}
+
+export async function forceNewWalletConnection() {
+  // Clear all cached instances first
+  provider = null
+  signer = null
+  contract = null
+  jsonProvider = null
+
+  if (typeof window === "undefined" || !window.ethereum) {
+    throw new Error("No Web3 wallet detected. Please install MetaMask or another Web3 wallet.")
+  }
+
+  // Switch to correct network first
+  await switchNetwork()
+
+  // Force MetaMask to show account picker by requesting permissions
+  try {
+    await window.ethereum.request({
+      method: "wallet_requestPermissions",
+      params: [{ eth_accounts: {} }],
+    })
+  } catch (error: any) {
+    if (error.code === 4001) {
+      throw new Error("Connection cancelled by user")
+    }
+    // If wallet_requestPermissions fails, continue with normal connection
+    console.log("[v0] wallet_requestPermissions not supported, using eth_requestAccounts")
+  }
+
+  // Now get the accounts
+  const freshProvider = new BrowserProvider(window.ethereum)
+  provider = freshProvider
+  const accounts = await freshProvider.send("eth_requestAccounts", [])
+
+  if (!accounts || accounts.length === 0) {
+    throw new Error("No accounts found in wallet")
+  }
+
+  signer = null // Reset signer so it gets recreated with new account
+  return accounts[0]
+}
+
+export async function forceReconnectWallet() {
+  // Clear all cached instances
+  provider = null
+  signer = null
+  contract = null
+
+  // Request accounts again to get the current wallet
+  return connectWallet()
 }

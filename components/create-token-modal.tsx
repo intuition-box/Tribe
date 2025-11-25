@@ -6,7 +6,7 @@ import { useState, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { X, Upload, Loader2 } from 'lucide-react'
+import { X, Upload, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { useContract } from "@/hooks/use-contract"
 import { useWallet } from "@/hooks/use-wallet"
@@ -111,7 +111,13 @@ export default function CreateTokenModal({ onClose, onCreate, existingTokens = [
         intuitionLink: formData.intuitionLink,
       })
 
+      console.log("[v0] Creating token on blockchain...")
       const tokenAddress = await createToken(formData.name, formData.symbol, metadata)
+      console.log("[v0] Token created on blockchain:", tokenAddress)
+
+      if (!tokenAddress) {
+        throw new Error("Failed to create token on blockchain")
+      }
 
       const normalizedLink = formData.intuitionLink ? normalizeIntuitionLink(formData.intuitionLink) : ""
 
@@ -130,16 +136,19 @@ export default function CreateTokenModal({ onClose, onCreate, existingTokens = [
         isAlpha: true,
         contractAddress: tokenAddress,
         isCompleted: false,
-        createdAt: new Date().toISOString(), // Add creation timestamp
+        createdAt: new Date().toISOString(),
       }
 
+      console.log("[v0] Saving token to database...")
       const savedToken = await createTokenInDatabase(newToken)
 
       if (savedToken) {
+        console.log("[v0] Token saved successfully:", savedToken.id)
         onCreate(savedToken)
         onClose()
       } else {
-        setError("Failed to save token. Please try again.")
+        console.error("[v0] createTokenInDatabase returned null")
+        setError("Failed to save token to database. Please try again or contact support.")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create token")

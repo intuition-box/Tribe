@@ -57,14 +57,27 @@ export async function updateUserPoints(walletAddress: string): Promise<{
     // Fetch volume from blockchain
     const { buyVolume, sellVolume, totalVolume } = await getUserVolumeFromBlockchain(walletAddress)
 
-    // Calculate points using anti-whale formula
-    const points = calculatePoints(totalVolume)
+    // Calculate points from trading volume using anti-whale formula
+    const tradingPoints = calculatePoints(totalVolume)
+
+    const { data: existingData } = await supabase
+      .from("user_points")
+      .select("comment_points")
+      .eq("wallet_address", walletAddress.toLowerCase())
+      .single()
+
+    const commentPoints = existingData?.comment_points ? Number(existingData.comment_points) : 0
+
+    // Total points = trading points + comment points
+    const totalPoints = tradingPoints + commentPoints
 
     console.log("[v0] Updating points for", walletAddress, {
       buyVolume,
       sellVolume,
       totalVolume,
-      points,
+      tradingPoints,
+      commentPoints,
+      totalPoints,
     })
 
     // Upsert user points in database
@@ -76,7 +89,9 @@ export async function updateUserPoints(walletAddress: string): Promise<{
           total_buy_volume: buyVolume,
           total_sell_volume: sellVolume,
           total_volume: totalVolume,
-          points: points,
+          trading_points: tradingPoints,
+          comment_points: commentPoints,
+          points: totalPoints,
           last_updated: new Date().toISOString(),
         },
         {
@@ -92,13 +107,13 @@ export async function updateUserPoints(walletAddress: string): Promise<{
         console.warn(
           "[v0] user_points table not found. Please run the migration script: scripts/007_create_user_points_table.sql",
         )
-        return { totalVolume, points }
+        return { totalVolume, points: totalPoints }
       }
       console.error("[v0] Failed to update user points in database:", error)
       return null
     }
 
-    return { totalVolume, points }
+    return { totalVolume, points: totalPoints }
   } catch (error) {
     console.error("[v0] Error updating user points:", error)
     return null
@@ -129,11 +144,13 @@ export async function getUserPoints(walletAddress: string): Promise<{
       if (error.message?.includes("Could not find the table")) {
         console.warn("[v0] user_points table not found. Fetching directly from blockchain...")
         const { buyVolume, sellVolume, totalVolume } = await getUserVolumeFromBlockchain(walletAddress)
-        const points = calculatePoints(totalVolume)
+        const tradingPoints = calculatePoints(totalVolume)
+        const commentPoints = 0
+        const totalPoints = tradingPoints + commentPoints
 
         return {
           totalVolume,
-          points,
+          points: totalPoints,
           buyVolume,
           sellVolume,
           lastUpdated: new Date().toISOString(),
@@ -221,5 +238,74 @@ export async function getPointsLeaderboard(limit = 100): Promise<
   } catch (error) {
     console.error("[v0] Error fetching leaderboard:", error)
     return []
+  }
+}
+
+/**
+ * Award points for posting a comment
+ * Fixed reward: 0.025 points per comment
+ */
+export async function awardCommentPoints(walletAddress: string): Promise<boolean> {
+  try {
+    const supabase = createBrowserClient()
+    const COMMENT_POINTS = 0.025
+
+    const { data: currentData, error: fetchError } = await supabase
+      .from("user_points")
+      .select("points, comment_points, trading_points, total_volume, total_buy_volume, total_sell_volume")
+      .eq("wallet_address", walletAddress.toLowerCase())
+      .single()
+
+    let newCommentPoints = COMMENT_POINTS
+    let tradingPoints = 0
+    let totalVolume = 0
+    let buyVolume = 0
+    let sellVolume = 0
+
+    if (currentData && !fetchError) {
+      // User exists, add to their comment points
+      newCommentPoints = (Number(currentData.comment_points) || 0) + COMMENT_POINTS
+      tradingPoints = Number(currentData.trading_points) || 0
+      totalVolume = Number(currentData.total_volume) || 0
+      buyVolume = Number(currentData.total_buy_volume) || 0
+      sellVolume = Number(currentData.total_sell_volume) || 0
+    }
+
+    const totalPoints = tradingPoints + newCommentPoints
+
+    // Upsert the points
+    const { error: upsertError } = await supabase.from("user_points").upsert(
+      {
+        wallet_address: walletAddress.toLowerCase(),
+        trading_points: tradingPoints,
+        comment_points: newCommentPoints,
+        points: totalPoints,
+        total_volume: totalVolume,
+        total_buy_volume: buyVolume,
+        total_sell_volume: sellVolume,
+        last_updated: new Date().toISOString(),
+      },
+      {
+        onConflict: "wallet_address",
+      },
+    )
+
+    if (upsertError) {
+      console.error("[v0] Failed to award comment points:", upsertError)
+      return false
+    }
+
+    console.log(
+      "[v0] Awarded",
+      COMMENT_POINTS,
+      "points for comment to",
+      walletAddress,
+      "Total comment points:",
+      newCommentPoints,
+    )
+    return true
+  } catch (error) {
+    console.error("[v0] Error awarding comment points:", error)
+    return false
   }
 }

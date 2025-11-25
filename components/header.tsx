@@ -3,10 +3,12 @@
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { useState } from "react"
-import { Menu, LogOut, Settings, Wallet, Sparkles, TrendingUp, Plus } from 'lucide-react'
+import { Menu, LogOut, Wallet, Sparkles, TrendingUp, Plus, Shield, User } from "lucide-react"
 import { useWallet } from "@/hooks/use-wallet"
-import { useRouter } from 'next/navigation'
+import { useRouter } from "next/navigation"
 import HeaderProfile from "@/components/header-profile"
+import { isAdmin } from "@/lib/admin-config"
+import EditProfileModal from "@/components/edit-profile-modal"
 
 interface HeaderProps {
   onCreateClick: () => void
@@ -15,9 +17,11 @@ interface HeaderProps {
 
 export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
   const [showMenu, setShowMenu] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
   const { address, balance, isConnecting, connect, disconnect } = useWallet()
   const router = useRouter()
   const hasAlphaAccess = Number(balance) >= 2000
+  const userIsAdmin = isAdmin(address)
 
   const handleConnect = async () => {
     await connect()
@@ -93,6 +97,16 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
                   </div>
                   <button
                     onClick={() => {
+                      setShowProfileModal(true)
+                      setShowMenu(false)
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
+                  >
+                    <User className="w-4 h-4" />
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => {
                       router.push("/portfolio")
                       setShowMenu(false)
                     }}
@@ -101,6 +115,18 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
                     <TrendingUp className="w-4 h-4" />
                     Portfolio
                   </button>
+                  {userIsAdmin && (
+                    <button
+                      onClick={() => {
+                        router.push("/admin")
+                        setShowMenu(false)
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
+                    >
+                      <Shield className="w-4 h-4" />
+                      Admin
+                    </button>
+                  )}
                   <button
                     onClick={handleDisconnect}
                     className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-muted/50 flex items-center gap-2 transition-colors border-t border-border"
@@ -114,6 +140,18 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
           )}
         </div>
       </div>
+
+      {address && (
+        <EditProfileModal
+          open={showProfileModal}
+          onOpenChange={setShowProfileModal}
+          walletAddress={address}
+          onProfileUpdated={() => {
+            // Optionally refresh header profile display
+            window.location.reload()
+          }}
+        />
+      )}
     </header>
   )
 }

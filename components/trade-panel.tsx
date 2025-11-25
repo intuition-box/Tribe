@@ -93,7 +93,7 @@ export default function TradePanel({ token, onTradeComplete }: TradePanelProps) 
 
     try {
       if (mode === "buy") {
-        const minTokensOut = (Number.parseFloat(amount) * 0.99).toFixed(6)
+        const minTokensOut = (Number.parseFloat(amount) * 0.98).toFixed(6)
         console.log("[v0] Buying tokens:", {
           contractAddress: token.contractAddress,
           trustAmount,
@@ -227,7 +227,7 @@ export default function TradePanel({ token, onTradeComplete }: TradePanelProps) 
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Slippage</span>
-          <span className="text-foreground font-semibold">1%</span>
+          <span className="text-foreground font-semibold">2%</span>
         </div>
       </div>
 

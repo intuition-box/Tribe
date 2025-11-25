@@ -6,12 +6,13 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ShoppingCart, TrendingDown, ExternalLink, Copy, Star } from 'lucide-react'
+import { ShoppingCart, TrendingDown, ExternalLink, Copy, Star, Lock, LockOpen } from "lucide-react"
 import { calculateBondingCurveProgress } from "@/lib/bonding-curve"
 import QuickTradeModal from "./quick-trade-modal"
 import { toggleStarToken, isTokenStarred } from "@/lib/starred-tokens"
 import { useWallet } from "@/hooks/use-wallet"
 import type { mockTokens } from "@/lib/mock-data"
+import { isTokenUnlocked } from "@/lib/contract-functions"
 
 interface TokenCardProps {
   token: (typeof mockTokens)[0]
@@ -27,6 +28,8 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
   const [copied, setCopied] = useState(false)
   const [isStarred, setIsStarred] = useState(false)
   const [isStarring, setIsStarring] = useState(false)
+  const [isUnlocked, setIsUnlocked] = useState(false)
+  const [isCheckingLock, setIsCheckingLock] = useState(true)
   const { address } = useWallet()
 
   useEffect(() => {
@@ -34,6 +37,27 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
       isTokenStarred(address, token.contractAddress).then(setIsStarred)
     }
   }, [address, token.contractAddress])
+
+  useEffect(() => {
+    const checkUnlockStatus = async () => {
+      if (token.contractAddress && token.contractAddress !== "0x0000000000000000000000000000000000000000") {
+        try {
+          setIsCheckingLock(true)
+          const unlocked = await isTokenUnlocked(token.contractAddress)
+          setIsUnlocked(unlocked)
+        } catch (error) {
+          console.error("Failed to check unlock status:", error)
+          setIsUnlocked(false)
+        } finally {
+          setIsCheckingLock(false)
+        }
+      } else {
+        setIsCheckingLock(false)
+      }
+    }
+
+    checkUnlockStatus()
+  }, [token.contractAddress])
 
   const currentPrice = token.currentPrice ?? 0
   const startPrice = token.startPrice ?? 0
@@ -77,7 +101,7 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
 
   const handleStarClick = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    
+
     if (!address) {
       alert("Please connect your wallet to star tokens")
       return
@@ -106,17 +130,17 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
         }`}
         onClick={onClick}
       >
-        <div className="p-4 space-y-3">
+        <div className="p-3 space-y-2">
           {/* Token Header */}
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3 flex-1">
+            <div className="flex items-center gap-2 flex-1">
               <img
                 src={token.image || "/placeholder.svg"}
                 alt={token.name}
-                className="w-10 h-10 rounded-full object-cover"
+                className="w-8 h-8 rounded-full object-cover"
               />
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-sm text-foreground truncate">{token.name}</h3>
+                <h3 className="font-bold text-xs text-foreground truncate">{token.name}</h3>
                 <p className="text-xs text-muted-foreground">${token.symbol}</p>
               </div>
             </div>
@@ -126,11 +150,23 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
                 size="sm"
                 onClick={handleStarClick}
                 disabled={isStarring || !address}
-                className={`h-7 w-7 p-0 hover:bg-muted ${isStarred ? "text-yellow-500" : "text-muted-foreground"}`}
+                className={`h-6 w-6 p-0 hover:bg-muted ${isStarred ? "text-yellow-500" : "text-muted-foreground"}`}
                 title={isStarred ? "Unstar token" : "Star token"}
               >
-                <Star className={`w-4 h-4 ${isStarred ? "fill-current" : ""}`} />
+                <Star className={`w-3 h-3 ${isStarred ? "fill-current" : ""}`} />
               </Button>
+              {!isCheckingLock && (
+                <div
+                  className={`flex items-center justify-center h-6 w-6 rounded ${
+                    isUnlocked ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
+                  }`}
+                  title={
+                    isUnlocked ? "Token unlocked - Available for trading" : "Token locked - Creator must buy 2% first"
+                  }
+                >
+                  {isUnlocked ? <LockOpen className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                </div>
+              )}
               {isAlpha && <Badge className="bg-accent text-accent-foreground text-xs">Alpha</Badge>}
               {token.isCompleted && (
                 <Badge className="bg-orange-600 text-white text-xs whitespace-nowrap">Launch Complete</Badge>
@@ -139,7 +175,7 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
           </div>
 
           {/* Contract Address section */}
-          <div className="flex items-center gap-2 pb-2 border-b border-border">
+          <div className="flex items-center gap-2 pb-1.5 border-b border-border">
             <div className="flex-1 min-w-0">
               <p className="text-xs text-muted-foreground">Contract Address</p>
               <p className="text-xs font-mono text-foreground truncate">{token.contractAddress}</p>
@@ -148,7 +184,7 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
               variant="ghost"
               size="sm"
               onClick={handleCopyAddress}
-              className="h-7 w-7 p-0 hover:bg-muted"
+              className="h-6 w-6 p-0 hover:bg-muted"
               title="Copy address"
             >
               <Copy className={`w-3 h-3 ${copied ? "text-green-500" : ""}`} />
@@ -157,7 +193,7 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
 
           {/* Intuition Link section */}
           {token.intuitionLink && (
-            <div className="flex items-center gap-2 pb-2 border-b border-border">
+            <div className="flex items-center gap-2 pb-1.5 border-b border-border">
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-muted-foreground">Intuition Graph</p>
                 <button
@@ -172,54 +208,51 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
           )}
 
           {/* Price Info */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Current Price</span>
-              <span className="font-semibold text-sm text-foreground">${currentPrice.toFixed(8)}</span>
+              <span className="font-semibold text-xs text-foreground">${currentPrice.toFixed(8)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">Market Cap</span>
-              <span className="font-semibold text-sm text-foreground">${(token.marketCap ?? 0).toFixed(2)} TRUST</span>
+              <span className="text-xs text-muted-foreground">Trust Committed</span>
+              <span className="font-semibold text-xs text-foreground">{(token.marketCap ?? 0).toFixed(2)} TRUST</span>
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Bonding Curve</span>
               <span className="font-semibold text-xs text-accent">{bondingCurveProgress.toFixed(1)}%</span>
             </div>
-            <div
-              className="bg-muted/30 rounded-full h-1.5"
-              style={{ width: `${bondingCurveProgress}%` }}
-            >
+            <div className="bg-muted/30 rounded-full h-1.5" style={{ width: `${bondingCurveProgress}%` }}>
               <div className="bg-gradient-to-r from-primary to-accent h-1.5 rounded-full transition-all duration-300" />
             </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
+          <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-border">
             <Button
               onClick={handleBuyClick}
               size="sm"
-              disabled={token.isCompleted}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={token.isCompleted || !isUnlocked}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed text-xs h-8"
             >
-              <ShoppingCart className="w-3.5 h-3.5" />
+              <ShoppingCart className="w-3 h-3" />
               Buy
             </Button>
             <Button
               onClick={handleSellClick}
               size="sm"
-              disabled={token.isCompleted}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={token.isCompleted || !isUnlocked}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed text-xs h-8"
             >
-              <TrendingDown className="w-3.5 h-3.5" />
+              <TrendingDown className="w-3 h-3" />
               Sell
             </Button>
           </div>
 
           {token.isCompleted && (
-            <div className="pt-2 border-t border-border">
+            <div className="pt-1.5 border-t border-border">
               <p className="text-xs text-center text-orange-600 font-medium">
                 Trading stopped - Token launch completed
               </p>

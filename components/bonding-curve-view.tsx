@@ -3,13 +3,15 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, ExternalLink } from 'lucide-react'
+import { ArrowLeft, ExternalLink } from "lucide-react"
 import BondingCurveChart from "@/components/bonding-curve-chart"
 import TradePanel from "@/components/trade-panel"
 import { fetchAllTokens } from "@/lib/tokens"
 import type { MemeToken } from "@/lib/tokens"
 import type { mockTokens } from "@/lib/mock-data"
 import { formatLargeNumber } from "@/lib/utils"
+import TokenComments from "@/components/token-comments"
+import TokenHolders from "@/components/token-holders"
 
 interface BondingCurveViewProps {
   token: (typeof mockTokens)[0]
@@ -74,7 +76,7 @@ export default function BondingCurveView({ token: initialToken, onBack }: Bondin
                 <p className="text-xl font-bold text-foreground">${token.currentPrice.toFixed(8)}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Market Cap</p>
+                <p className="text-sm text-muted-foreground mb-1">Trust Committed</p>
                 <p className="text-xl font-bold text-foreground">{token.marketCap.toFixed(2)} TRUST</p>
               </div>
               <div>
@@ -114,6 +116,12 @@ export default function BondingCurveView({ token: initialToken, onBack }: Bondin
               )}
             </div>
           </Card>
+
+          {/* Token Holders */}
+          <TokenHolders tokenAddress={token.contractAddress} maxSupply={token.maxSupply} />
+
+          {/* Comments */}
+          <TokenComments tokenAddress={token.contractAddress} />
         </div>
 
         {/* Right Column - Trade Panel */}

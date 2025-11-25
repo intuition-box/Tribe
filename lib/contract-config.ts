@@ -1,9 +1,9 @@
 export const CONTRACT_CONFIG = {
-  address: "0xFd800FA84B797F273F82949BcAd1b08c48BB8D1b",
+  address: "0xD9E849B6d44946B0D0FAEafe34b92C79c68cCbeF",
   chainId: 1155,
   network: {
     name: "Intuition Mainnet",
-    rpcUrl: "https://rpc.intuition.systems",
+    rpcUrl: "https://intuition.calderachain.xyz/http",
     currency: "TRUST",
     blockExplorer: "https://intuition.calderaexplorer.xyz/",
   },

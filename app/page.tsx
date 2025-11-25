@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Header from "@/components/header"
+import Sidebar from "@/components/sidebar"
 import CreateTokenModal from "@/components/create-token-modal"
 import TokenGrid from "@/components/token-grid"
 import BondingCurveView from "@/components/bonding-curve-view"
@@ -57,10 +58,10 @@ export default function Home() {
 
   const loadStarredTokens = async () => {
     if (!address) return
-    
+
     try {
       const starred = await getStarredTokens(address)
-      const normalizedStarred = starred.map(addr => addr.toLowerCase())
+      const normalizedStarred = starred.map((addr) => addr.toLowerCase())
       console.log("[v0] Loaded starred tokens from DB:", normalizedStarred)
       setStarredTokenAddresses(normalizedStarred)
     } catch (error) {
@@ -92,7 +93,7 @@ export default function Home() {
         (token) =>
           token.name.toLowerCase().includes(query) ||
           token.symbol.toLowerCase().includes(query) ||
-          token.contractAddress.toLowerCase().includes(query)
+          token.contractAddress.toLowerCase().includes(query),
       )
     }
 
@@ -126,7 +127,7 @@ export default function Home() {
         console.log("[v0] Filtering starred tokens")
         console.log("[v0] Current starred addresses:", starredTokenAddresses)
         console.log("[v0] Wallet address:", address)
-        
+
         if (!address) {
           filtered = []
         } else {
@@ -136,7 +137,7 @@ export default function Home() {
             return isStarred
           })
         }
-        
+
         console.log("[v0] Filtered starred tokens count:", filtered.length)
         break
       case "all":
@@ -159,131 +160,137 @@ export default function Home() {
   if (showAlphaRoom) {
     return (
       <main className="min-h-screen bg-background">
-        <Header onCreateClick={() => setShowCreateModal(true)} onAlphaClick={() => setShowAlphaRoom(false)} />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center space-y-6">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20 blur-3xl animate-pulse" />
-              <h1 className="text-5xl font-bold text-foreground relative">✨ Alpha Room</h1>
+        <Sidebar />
+        <div className="ml-16">
+          <Header onCreateClick={() => setShowCreateModal(true)} onAlphaClick={() => setShowAlphaRoom(false)} />
+          <div className="container mx-auto px-4 py-8">
+            <div className="text-center space-y-6">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20 blur-3xl animate-pulse" />
+                <h1 className="text-5xl font-bold text-foreground relative">✨ Alpha Room</h1>
+              </div>
+              <p className="text-xl text-muted-foreground">Private room for TRUST Card holders</p>
+              <p className="text-muted-foreground">Exclusive access to premium tokens and early opportunities</p>
+              <button
+                onClick={() => setShowAlphaRoom(false)}
+                className="mt-8 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold transition-colors"
+              >
+                Back to Launchpad
+              </button>
             </div>
-            <p className="text-xl text-muted-foreground">Private room for TRUST Card holders</p>
-            <p className="text-muted-foreground">Exclusive access to premium tokens and early opportunities</p>
-            <button
-              onClick={() => setShowAlphaRoom(false)}
-              className="mt-8 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold transition-colors"
-            >
-              Back to Launchpad
-            </button>
           </div>
+          <Footer />
         </div>
-        <Footer />
       </main>
     )
   }
 
   return (
-    <main className="flex flex-col min-h-screen bg-background">
-      <Header onCreateClick={() => setShowCreateModal(true)} onAlphaClick={() => setShowAlphaRoom(true)} />
+    <main className="flex min-h-screen bg-background">
+      <Sidebar />
+      <div className="flex-1 ml-16">
+        <Header onCreateClick={() => setShowCreateModal(true)} onAlphaClick={() => setShowAlphaRoom(true)} />
 
-      {selectedToken ? (
-        <BondingCurveView token={selectedToken} onBack={handleBackFromBondingCurve} />
-      ) : (
-        <div className="flex-1 container mx-auto px-4 py-8">
-          <div className="mb-6 w-full">
-            <TokenFilters
-              activeFilter={activeFilter}
-              onFilterChange={setActiveFilter}
-              starredCount={starredTokenAddresses.length}
-            />
-          </div>
-
-          <div className="mb-8">
-            <div className="relative max-w-2xl mx-auto">
-              <input
-                type="text"
-                placeholder="Search by name, symbol, or contract address..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-3 pl-12 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+        {selectedToken ? (
+          <BondingCurveView token={selectedToken} onBack={handleBackFromBondingCurve} />
+        ) : (
+          <div className="container mx-auto px-4 py-8">
+            <div className="mb-6 w-full">
+              <TokenFilters
+                activeFilter={activeFilter}
+                onFilterChange={setActiveFilter}
+                starredCount={starredTokenAddresses.length}
               />
-              <svg
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            </div>
+
+            <div className="mb-8">
+              <div className="relative max-w-2xl mx-auto">
+                <input
+                  type="text"
+                  placeholder="Search by name, symbol, or contract address..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-3 pl-12 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                 />
-              </svg>
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Clear search"
+                <svg
+                  className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {searchQuery && (
+                <p className="text-center text-sm text-muted-foreground mt-2">
+                  {filteredTokens.length} {filteredTokens.length === 1 ? "token" : "tokens"} found
+                </p>
               )}
             </div>
-            {searchQuery && (
-              <p className="text-center text-sm text-muted-foreground mt-2">
-                {filteredTokens.length} {filteredTokens.length === 1 ? "token" : "tokens"} found
-              </p>
+
+            {isLoading ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Loading tokens...</p>
+              </div>
+            ) : loadError ? (
+              <div className="text-center py-12">
+                <p className="text-red-400 mb-4">{loadError}</p>
+                <button
+                  onClick={loadTokens}
+                  className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : filteredTokens.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">
+                  {searchQuery
+                    ? "No tokens found matching your search"
+                    : activeFilter === "starred"
+                      ? address
+                        ? "No starred tokens yet. Star your favorite tokens to see them here!"
+                        : "Please connect your wallet to see starred tokens"
+                      : "No tokens available"}
+                </p>
+              </div>
+            ) : (
+              <TokenGrid
+                tokens={filteredTokens}
+                onSelectToken={setSelectedToken}
+                onTradeComplete={loadTokens}
+                onStarToggle={handleStarToggle}
+              />
             )}
           </div>
+        )}
 
-          {isLoading ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Loading tokens...</p>
-            </div>
-          ) : loadError ? (
-            <div className="text-center py-12">
-              <p className="text-red-400 mb-4">{loadError}</p>
-              <button
-                onClick={loadTokens}
-                className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold transition-colors"
-              >
-                Retry
-              </button>
-            </div>
-          ) : filteredTokens.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                {searchQuery
-                  ? "No tokens found matching your search"
-                  : activeFilter === "starred"
-                    ? address 
-                      ? "No starred tokens yet. Star your favorite tokens to see them here!"
-                      : "Please connect your wallet to see starred tokens"
-                    : "No tokens available"}
-              </p>
-            </div>
-          ) : (
-            <TokenGrid
-              tokens={filteredTokens}
-              onSelectToken={setSelectedToken}
-              onTradeComplete={loadTokens}
-              onStarToggle={handleStarToggle}
-            />
-          )}
-        </div>
-      )}
+        <Footer />
 
-      <Footer />
-
-      {showCreateModal && (
-        <CreateTokenModal
-          onClose={() => setShowCreateModal(false)}
-          onCreate={handleCreateToken}
-          existingTokens={tokens}
-        />
-      )}
+        {showCreateModal && (
+          <CreateTokenModal
+            onClose={() => setShowCreateModal(false)}
+            onCreate={handleCreateToken}
+            existingTokens={tokens}
+          />
+        )}
+      </div>
     </main>
   )
 }
