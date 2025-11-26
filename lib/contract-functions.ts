@@ -347,8 +347,9 @@ export async function addTokenComment(tokenAddress: string, commentText: string)
 
 export async function getTokenComments(tokenAddress: string) {
   try {
-    const contract = await getContract()
-    const comments = await contract.getComments(tokenAddress)
+    const jsonProvider = await getJsonProvider()
+    const readOnlyContract = new Contract(CONTRACT_CONFIG.address, ABI, jsonProvider)
+    const comments = await readOnlyContract.getComments(tokenAddress)
 
     return comments.map((comment: any) => ({
       commenter: comment.commenter,

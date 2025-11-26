@@ -214,7 +214,7 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
               <span className="font-semibold text-xs text-foreground">${currentPrice.toFixed(8)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">Trust Committed</span>
+              <span className="text-xs text-muted-foreground">Trust Stock Value</span>
               <span className="font-semibold text-xs text-foreground">{(token.marketCap ?? 0).toFixed(2)} TRUST</span>
             </div>
           </div>

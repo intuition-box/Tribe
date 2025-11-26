@@ -76,7 +76,7 @@ export default function BondingCurveView({ token: initialToken, onBack }: Bondin
                 <p className="text-xl font-bold text-foreground">${token.currentPrice.toFixed(8)}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Trust Committed</p>
+                <p className="text-sm text-muted-foreground mb-1">Trust Stock Value</p>
                 <p className="text-xl font-bold text-foreground">{token.marketCap.toFixed(2)} TRUST</p>
               </div>
               <div>
