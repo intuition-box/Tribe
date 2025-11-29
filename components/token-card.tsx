@@ -125,26 +125,26 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
   return (
     <>
       <Card
-        className={`cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg ${
+        className={`cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg overflow-hidden ${
           isAlpha ? "alpha-shimmer bg-card/80 border-accent/30" : "bg-card border-border"
         }`}
         onClick={onClick}
       >
-        <div className="p-2 md:p-3 space-y-1.5 md:space-y-2">
+        <div className="p-2 md:p-3 space-y-1.5 md:space-y-2 overflow-hidden">
           {/* Token Header */}
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-1.5 md:gap-2 flex-1">
+          <div className="flex items-start justify-between gap-1 overflow-hidden">
+            <div className="flex items-center gap-1.5 md:gap-2 flex-1 min-w-0 overflow-hidden">
               <img
                 src={token.image || "/placeholder.svg"}
                 alt={token.name}
-                className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
+                className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover flex-shrink-0"
               />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-[10px] md:text-xs text-foreground truncate">{token.name}</h3>
-                <p className="text-[10px] md:text-xs text-muted-foreground">${token.symbol}</p>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <h3 className="font-bold text-[10px] md:text-xs text-foreground truncate max-w-full">{token.name}</h3>
+                <p className="text-[10px] md:text-xs text-muted-foreground truncate">${token.symbol}</p>
               </div>
             </div>
-            <div className="flex flex-col gap-0.5 md:gap-1">
+            <div className="flex flex-col gap-0.5 md:gap-1 flex-shrink-0">
               <Button
                 variant="ghost"
                 size="sm"
@@ -183,16 +183,18 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
           </div>
 
           {/* Contract Address section */}
-          <div className="flex items-center gap-1.5 md:gap-2 pb-1 md:pb-1.5 border-b border-border">
-            <div className="flex-1 min-w-0">
-              <p className="text-[9px] md:text-xs text-muted-foreground">Contract</p>
-              <p className="text-[9px] md:text-xs font-mono text-foreground truncate">{token.contractAddress}</p>
+          <div className="flex items-center gap-1 md:gap-2 pb-1 md:pb-1.5 border-b border-border overflow-hidden">
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-[8px] md:text-xs text-muted-foreground">Contract</p>
+              <p className="text-[8px] md:text-xs font-mono text-foreground truncate max-w-full">
+                {token.contractAddress}
+              </p>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleCopyAddress}
-              className="h-5 w-5 md:h-6 md:w-6 p-0 hover:bg-muted"
+              className="h-5 w-5 md:h-6 md:w-6 p-0 hover:bg-muted flex-shrink-0"
               title="Copy address"
             >
               <Copy className={`w-2.5 h-2.5 md:w-3 md:h-3 ${copied ? "text-green-500" : ""}`} />
@@ -201,12 +203,12 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
 
           {/* Intuition Link section */}
           {token.intuitionLink && (
-            <div className="flex items-center gap-1.5 md:gap-2 pb-1 md:pb-1.5 border-b border-border">
-              <div className="flex-1 min-w-0">
-                <p className="text-[9px] md:text-xs text-muted-foreground">Intuition</p>
+            <div className="flex items-center gap-1 md:gap-2 pb-1 md:pb-1.5 border-b border-border overflow-hidden">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <p className="text-[8px] md:text-xs text-muted-foreground">Intuition</p>
                 <button
                   onClick={handleIntuitionClick}
-                  className="text-[9px] md:text-xs text-primary hover:underline flex items-center gap-0.5 md:gap-1 truncate w-full"
+                  className="text-[8px] md:text-xs text-primary hover:underline flex items-center gap-0.5 md:gap-1 truncate max-w-full"
                 >
                   <span className="truncate">View on Portal</span>
                   <ExternalLink className="w-2.5 h-2.5 md:w-3 md:h-3 flex-shrink-0" />
@@ -216,56 +218,61 @@ export default function TokenCard({ token, onClick, isAlpha, onTradeComplete, on
           )}
 
           {/* Price Info */}
-          <div className="space-y-0.5 md:space-y-1">
-            <div className="flex justify-between items-center">
-              <span className="text-[9px] md:text-xs text-muted-foreground">Price</span>
-              <span className="font-semibold text-[9px] md:text-xs text-foreground">${currentPrice.toFixed(8)}</span>
+          <div className="space-y-0.5 md:space-y-1 overflow-hidden">
+            <div className="flex justify-between items-center gap-1">
+              <span className="text-[8px] md:text-xs text-muted-foreground flex-shrink-0">Price</span>
+              <span className="font-semibold text-[8px] md:text-xs text-foreground truncate">
+                ${currentPrice.toFixed(6)}
+              </span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[9px] md:text-xs text-muted-foreground">Trust Stock</span>
-              <span className="font-semibold text-[9px] md:text-xs text-foreground">
+            <div className="flex justify-between items-center gap-1">
+              <span className="text-[8px] md:text-xs text-muted-foreground flex-shrink-0">Trust Stock</span>
+              <span className="font-semibold text-[8px] md:text-xs text-foreground truncate">
                 {(token.marketCap ?? 0).toFixed(2)}
               </span>
             </div>
           </div>
 
           <div className="space-y-0.5 md:space-y-1">
-            <div className="flex justify-between items-center">
-              <span className="text-[9px] md:text-xs text-muted-foreground">Bonding</span>
-              <span className="font-semibold text-[9px] md:text-xs text-accent">
+            <div className="flex justify-between items-center gap-1">
+              <span className="text-[8px] md:text-xs text-muted-foreground flex-shrink-0">Bonding</span>
+              <span className="font-semibold text-[8px] md:text-xs text-accent">
                 {bondingCurveProgress.toFixed(1)}%
               </span>
             </div>
-            <div className="bg-muted/30 rounded-full h-1 md:h-1.5" style={{ width: `${bondingCurveProgress}%` }}>
-              <div className="bg-gradient-to-r from-primary to-accent h-1 md:h-1.5 rounded-full transition-all duration-300" />
+            <div className="bg-muted/30 rounded-full h-1 md:h-1.5 w-full">
+              <div
+                className="bg-gradient-to-r from-primary to-accent h-1 md:h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${bondingCurveProgress}%` }}
+              />
             </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-1.5 md:gap-2 pt-1 md:pt-1.5 border-t border-border">
+          <div className="grid grid-cols-2 gap-1 md:gap-2 pt-1 md:pt-1.5 border-t border-border">
             <Button
               onClick={handleBuyClick}
               size="sm"
               disabled={token.isCompleted || !isUnlocked}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed text-[9px] md:text-xs h-6 md:h-8"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed text-[8px] md:text-xs h-6 md:h-8 px-1 md:px-2"
             >
-              <ShoppingCart className="w-2.5 h-2.5 md:w-3 md:h-3" />
-              Buy
+              <ShoppingCart className="w-2.5 h-2.5 md:w-3 md:h-3 flex-shrink-0" />
+              <span>Buy</span>
             </Button>
             <Button
               onClick={handleSellClick}
               size="sm"
               disabled={token.isCompleted || !isUnlocked}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed text-[9px] md:text-xs h-6 md:h-8"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground flex items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed text-[8px] md:text-xs h-6 md:h-8 px-1 md:px-2"
             >
-              <TrendingDown className="w-2.5 h-2.5 md:w-3 md:h-3" />
-              Sell
+              <TrendingDown className="w-2.5 h-2.5 md:w-3 md:h-3 flex-shrink-0" />
+              <span>Sell</span>
             </Button>
           </div>
 
           {token.isCompleted && (
             <div className="pt-1 md:pt-1.5 border-t border-border">
-              <p className="text-[8px] md:text-xs text-center text-orange-600 font-medium">
+              <p className="text-[7px] md:text-xs text-center text-orange-600 font-medium truncate">
                 Trading stopped - Launch completed
               </p>
             </div>
