@@ -162,15 +162,17 @@ export default function Home() {
     return (
       <main className="min-h-screen bg-background">
         <Sidebar />
-        <div className="ml-16">
+        <div className="md:ml-16">
           <Header onCreateClick={() => setShowCreateModal(true)} onAlphaClick={() => setShowAlphaRoom(false)} />
-          <div className="container mx-auto px-4 py-8 pt-36">
-            <h1 className="text-5xl font-bold text-foreground relative">✨ Alpha Room</h1>
-            <p className="text-xl text-muted-foreground">Private room for TRUST Card holders</p>
-            <p className="text-muted-foreground">Exclusive access to premium tokens and early opportunities</p>
+          <div className="container mx-auto px-2 md:px-4 py-4 md:py-8 pt-28 md:pt-36">
+            <h1 className="text-3xl md:text-5xl font-bold text-foreground relative">✨ Alpha Room</h1>
+            <p className="text-base md:text-xl text-muted-foreground">Private room for TRUST Card holders</p>
+            <p className="text-sm md:text-base text-muted-foreground">
+              Exclusive access to premium tokens and early opportunities
+            </p>
             <button
               onClick={() => setShowAlphaRoom(false)}
-              className="mt-8 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold transition-colors"
+              className="mt-4 md:mt-8 px-4 md:px-6 py-2 md:py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold transition-colors text-sm md:text-base"
             >
               Back to Launchpad
             </button>
@@ -184,16 +186,16 @@ export default function Home() {
   return (
     <main className="flex min-h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 ml-16">
+      <div className="flex-1 md:ml-16">
         <Header onCreateClick={() => setShowCreateModal(true)} onAlphaClick={() => setShowAlphaRoom(true)} />
 
         {selectedToken ? (
-          <div className="pt-36">
+          <div className="pt-28 md:pt-36">
             <BondingCurveView token={selectedToken} onBack={handleBackFromBondingCurve} />
           </div>
         ) : (
-          <div className="container mx-auto px-4 py-4 pt-36">
-            <div className="mb-4 w-full">
+          <div className="container mx-auto px-2 md:px-4 py-2 md:py-4 pt-28 md:pt-36">
+            <div className="mb-2 md:mb-4 w-full">
               <TokenFilters
                 activeFilter={activeFilter}
                 onFilterChange={setActiveFilter}
@@ -201,21 +203,21 @@ export default function Home() {
               />
             </div>
 
-            <div className="mb-4">
+            <div className="mb-2 md:mb-4">
               <TVTTicker />
             </div>
 
-            <div className="mb-6">
+            <div className="mb-3 md:mb-6">
               <div className="relative max-w-2xl mx-auto">
                 <input
                   type="text"
-                  placeholder="Search by name, symbol, or contract address..."
+                  placeholder="Search tokens..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-3 pl-12 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                  className="w-full px-3 md:px-4 py-2 md:py-3 pl-9 md:pl-12 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-sm md:text-base"
                 />
                 <svg
-                  className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground"
+                  className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -230,39 +232,39 @@ export default function Home() {
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     aria-label="Clear search"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 )}
               </div>
               {searchQuery && (
-                <p className="text-center text-sm text-muted-foreground mt-2">
+                <p className="text-center text-xs md:text-sm text-muted-foreground mt-1 md:mt-2">
                   {filteredTokens.length} {filteredTokens.length === 1 ? "token" : "tokens"} found
                 </p>
               )}
             </div>
 
             {isLoading ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Loading tokens...</p>
+              <div className="text-center py-8 md:py-12">
+                <p className="text-sm md:text-base text-muted-foreground">Loading tokens...</p>
               </div>
             ) : loadError ? (
-              <div className="text-center py-12">
-                <p className="text-red-400 mb-4">{loadError}</p>
+              <div className="text-center py-8 md:py-12">
+                <p className="text-sm md:text-base text-red-400 mb-2 md:mb-4">{loadError}</p>
                 <button
                   onClick={loadTokens}
-                  className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold transition-colors"
+                  className="px-4 md:px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold transition-colors text-sm md:text-base"
                 >
                   Retry
                 </button>
               </div>
             ) : filteredTokens.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">
+              <div className="text-center py-8 md:py-12">
+                <p className="text-sm md:text-base text-muted-foreground">
                   {searchQuery
                     ? "No tokens found matching your search"
                     : activeFilter === "starred"

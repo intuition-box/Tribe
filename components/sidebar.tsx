@@ -42,7 +42,7 @@ export default function Sidebar() {
   ]
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-16 bg-card border-r border-border z-40 flex flex-col">
+    <aside className="fixed left-0 top-0 h-screen w-16 bg-card border-r border-border z-40 hidden md:flex flex-col">
       {/* Logo section - hidden in icon-only mode */}
       <div className="h-[120px] flex items-center justify-center border-b border-border">
         <Image src="/tribe-logo.png" alt="TRIBE" width={32} height={32} className="object-contain" />

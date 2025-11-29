@@ -128,14 +128,16 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
 
   return (
     <>
-      <div className="fixed top-0 left-16 right-0 z-50">
+      <div className="fixed top-0 left-0 md:left-16 right-0 z-50">
         {showDisclaimer && (
-          <div className="bg-yellow-500/90 text-black px-4 py-2 flex items-center justify-center gap-3 relative">
+          <div className="bg-yellow-500/90 text-black px-2 md:px-4 py-1.5 md:py-2 flex items-center justify-center gap-2 md:gap-3 relative">
             <AlertTriangleIcon />
-            <p className="text-sm font-medium text-center">Disclaimer: This app runs on non-audited smart contracts.</p>
+            <p className="text-xs md:text-sm font-medium text-center">
+              Disclaimer: This app runs on non-audited smart contracts.
+            </p>
             <button
               onClick={() => setShowDisclaimer(false)}
-              className="absolute right-4 p-1 hover:bg-yellow-600/50 rounded transition-colors"
+              className="absolute right-2 md:right-4 p-1 hover:bg-yellow-600/50 rounded transition-colors"
               aria-label="Dismiss disclaimer"
             >
               <XIcon />
@@ -143,29 +145,30 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
           </div>
         )}
 
-        <header className="h-[120px] border-b border-border bg-black">
-          <div className="h-full flex items-center justify-between px-4">
-            <div className="flex items-center gap-6">
-              <div className="relative w-48 h-16 cursor-pointer" onClick={() => router.push("/")}>
+        <header className="h-[80px] md:h-[120px] border-b border-border bg-black">
+          <div className="h-full flex items-center justify-between px-2 md:px-4">
+            <div className="flex items-center gap-2 md:gap-6">
+              <div className="relative w-24 md:w-48 h-10 md:h-16 cursor-pointer" onClick={() => router.push("/")}>
                 <Image src="/tribe-logo.png" alt="TRIBE Logo" fill className="object-contain" priority />
               </div>
               <div className="hidden lg:block h-10 w-px bg-border" />
               <Button
                 onClick={onCreateClick}
-                className="hidden lg:flex items-center gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-semibold px-6"
+                className="flex items-center gap-1 md:gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-semibold px-2 md:px-6 text-xs md:text-sm h-8 md:h-10"
               >
                 <PlusIcon />
-                Create Token
+                <span className="hidden sm:inline">Create Token</span>
+                <span className="sm:hidden">Create</span>
               </Button>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               {address && <HeaderProfile />}
 
               {address && hasAlphaAccess && (
                 <Button
                   onClick={onAlphaClick}
-                  className="bg-gradient-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold relative overflow-hidden group"
+                  className="hidden md:flex bg-gradient-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold relative overflow-hidden group"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
                   <SparklesIcon />
@@ -177,10 +180,13 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
                 <Button
                   onClick={handleConnect}
                   disabled={isConnecting}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-2 md:px-6 text-xs md:text-sm h-8 md:h-10"
                 >
                   <WalletIcon />
-                  <span className="ml-2">{isConnecting ? "Connecting..." : "Connect Wallet"}</span>
+                  <span className="ml-1 md:ml-2">
+                    {isConnecting ? "..." : <span className="hidden sm:inline">Connect Wallet</span>}
+                  </span>
+                  <span className="sm:hidden ml-1">{isConnecting ? "..." : "Connect"}</span>
                 </Button>
               ) : (
                 <div className="relative">
@@ -188,17 +194,17 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
                     variant="outline"
                     size="icon"
                     onClick={() => setShowMenu(!showMenu)}
-                    className="border-border hover:bg-muted/50"
+                    className="border-border hover:bg-muted/50 h-8 w-8 md:h-10 md:w-10"
                   >
                     <MenuIcon />
                   </Button>
 
                   {showMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg z-[100]">
-                      <div className="p-3 border-b border-border">
-                        <div className="flex items-center gap-2 px-3 py-2 rounded bg-muted/30">
+                    <div className="absolute right-0 mt-2 w-44 md:w-48 bg-card border border-border rounded-lg shadow-lg z-[100]">
+                      <div className="p-2 md:p-3 border-b border-border">
+                        <div className="flex items-center gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded bg-muted/30">
                           <WalletIcon />
-                          <span className="text-sm font-mono text-foreground">{formatAddress(address)}</span>
+                          <span className="text-xs md:text-sm font-mono text-foreground">{formatAddress(address)}</span>
                         </div>
                       </div>
                       <div className="py-1">
@@ -207,7 +213,7 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
                             setShowProfileModal(true)
                             setShowMenu(false)
                           }}
-                          className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
+                          className="w-full px-3 md:px-4 py-1.5 md:py-2 text-left text-xs md:text-sm text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
                         >
                           <UserIcon />
                           Profile
@@ -217,7 +223,7 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
                             router.push("/portfolio")
                             setShowMenu(false)
                           }}
-                          className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
+                          className="w-full px-3 md:px-4 py-1.5 md:py-2 text-left text-xs md:text-sm text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
                         >
                           <TrendingUpIcon />
                           Portfolio
@@ -228,7 +234,7 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
                               router.push("/admin")
                               setShowMenu(false)
                             }}
-                            className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
+                            className="w-full px-3 md:px-4 py-1.5 md:py-2 text-left text-xs md:text-sm text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
                           >
                             <ShieldIcon />
                             Admin
@@ -238,7 +244,7 @@ export default function Header({ onCreateClick, onAlphaClick }: HeaderProps) {
                       <div className="border-t border-border py-1">
                         <button
                           onClick={handleDisconnect}
-                          className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-muted/50 flex items-center gap-2 transition-colors"
+                          className="w-full px-3 md:px-4 py-1.5 md:py-2 text-left text-xs md:text-sm text-red-400 hover:bg-muted/50 flex items-center gap-2 transition-colors"
                         >
                           <LogOutIcon />
                           Disconnect
